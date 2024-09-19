@@ -1,7 +1,7 @@
 /* Genel Ayarlar */
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
+    /* background-color: #f4f4f4; */
     margin: 0;
     padding: 0;
     color: #333;
@@ -81,7 +81,7 @@ input[type="password"],
 input[type="text"] {
     width: 100%;
     padding: 10px;
-    margin-bottom: 15px;
+    
     border: 1px solid #ccc;
     border-radius: 4px;
     box-sizing: border-box;
@@ -460,3 +460,4 @@ header h1 {
     font-size: 24px; /* İkon boyutunu büyüt */
     cursor: pointer;
 }
+

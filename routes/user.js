@@ -178,7 +178,7 @@ router.post('/mouser-search-partnumber', async (req, res) => {
 
 // Ana sayfa rotası
 router.get('/', (req, res) => {
-    res.render('index');
+    res.redirect('/login');
 });
 
 // Kayıt sayfası

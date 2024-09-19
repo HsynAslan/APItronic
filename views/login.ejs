@@ -1,22 +1,466 @@
 <%- include('partials/header') %>
-<%- include('partials/navbar') %>
 
-<div class="container login-container">
-    <h2>Giriş Yap</h2>
+<div id="main-container">
+    <!-- Sol içerik alanı -->
+    <div id="left-side">
+        <!-- Navbar -->
+        <nav id="navbar">
+            <div id="logo">
+                <div class="logoImage"><img src="/images/logo.png" alt="Logo" id="logo-img"></div>
+
+                <div class="logoBigText">
+                    <span id="logoText">SUPPLERA</span>
+                    <span id="logoTextUnder">Risk Free Your Chain</span>
+                </div>
+                
+            </div>
+            <ul id="nav-links">
+                <li><a href="#">Hakkımızda</a></li>
+                <li><a href="#">Hizmetlerimiz</a></li>
+                <li><a href="#">Tedarikçi</a></li>
+                <li><a href="#">Risk Yönetimi</a></li>
+                <li><a href="#">İletişim</a></li>
+                <li><a href="#">Demo Talebi</a></li>
+            </ul>
+        </nav>
+
+        <!-- İçerik alanı -->
+        <div id="content">
+            <div class="content-up">
+                <div class="up-carosel-left">   
+            <h1 class="importantPadding">Supplera</h1>
+            <h2 class="red-heading importantPadding">Tedarikçi Risk Yönetimi</h2>
+            <p class="importantPadding">
+                Supplera, elektronik üreticilerin tüm risklerini, 100'den fazla pazar yerine entegre olarak yönetmelerine yardımcı olur.
+            </p>
+
+            </div>
+          
+                <img src="/images/riskAssessment.webp" alt="Supplera Image" id="title-image">
+            </div>
+            <div class="content-down"><a href="#" id="read-more" class="btn-read-more">Devamını Oku</a></div>
+            
+        </div>
+        
+
+
+            
+
+            <div id="carousel">
+                <div class="carousel-slide">
+                    <img src="/images/risk1.jpeg" alt="Resim 1">
+                    <img src="/images/risk2.jpeg" alt="Resim 2">
+                    <img src="/images/risk3.jpeg" alt="Resim 3">
+                    <img src="/images/risk4.jpeg" alt="Resim 4">
+                    <img src="/images/risk5.jpeg" alt="Resim 5">
+                </div>
+                <div class="carousel-indicators">
+                    <span class="indicator active" data-slide="0"></span>
+                    <span class="indicator" data-slide="1"></span>
+                    <span class="indicator" data-slide="2"></span>
+                    <span class="indicator" data-slide="3"></span>
+                    <span class="indicator" data-slide="4"></span>
+                </div>
+            </div>
+            
+
+        </div>
+    </div>
+
+    <!-- Sağ sabit giriş paneli -->
+    <div id="sidebar">
+        <div class="up-input">
+        <div id="search-container">
+            <input type="text" placeholder="Ara">
+            <i class="fa-solid fa-magnifying-glass fa-l"></i>
+            
+        </div>
+        <span class="globe-icon">
+            <i class="fas fa-globe fa-2xl" style="margin-right: 2vh;"></i>
+            TR
+        </span>
+    </div>
+
+        <div id="login-section">
+            <i class="fas fa-user-circle fa-3x login-icon-bigger"></i>
+            <form action="/login" method="POST" class="login-form">
+                <label for="email">E-posta:</label>
+                <input type="email" name="email" required><br>
+
+                <label for="password">Şifre:</label>
+                <input type="password" name="password" required><br>
+
+                <button type="submit" class="btn login-btn">GİRİŞ</button>
+                <a href="#" id="forgot-password">Şifremi Unuttum</a>
+            </form>
+        </div>
+        <div class="undericonsup">
+        <div class="underIcons">
+            <span>BLOG</span>
+            <div class="undericon"><i class="fa-brands fa-twitter fa-2xl"></i></div>
+            <div class="undericon"><i class="fa-brands fa-linkedin fa-2xl"></i></div>
+            <div class="undericon"><i class="fa-brands fa-instagram fa-2xl"></i></div>
+        </div>
+        </div>  
+    </div>
     
-    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-        <p style="color: red;"><%= errorMessage %></p>
-    <% } %>
-
-    <form action="/login" method="POST" class="login-form">
-        <label for="email">E-posta:</label>
-        <input type="email" name="email" required><br>
-
-        <label for="password">Şifre:</label>
-        <input type="password" name="password" required><br>
-
-        <button type="submit" class="btn login-btn">Giriş Yap</button>
-    </form>
 </div>
+<script>
+let currentIndex = 0;
+const slides = document.querySelectorAll('.carousel-slide img');
+const indicators = document.querySelectorAll('.indicator');
+const slideInterval = 3000; // 3 saniye
 
-<%- include('partials/footer') %>
+function goToSlide(index) {
+    const carouselSlide = document.querySelector('.carousel-slide');
+    currentIndex = index;
+    const slideWidth = slides[0].clientWidth;
+    carouselSlide.style.transform = `translateX(${-slideWidth * index}px)`;
+
+    indicators.forEach((indicator, i) => {
+        if (i === index) {
+            indicator.classList.add('active');
+        } else {
+            indicator.classList.remove('active');
+        }
+    });
+}
+
+function nextSlide() {
+    currentIndex = (currentIndex + 1) % slides.length;
+    goToSlide(currentIndex);
+}
+
+let slideTimer = setInterval(nextSlide, slideInterval);
+
+indicators.forEach((indicator, index) => {
+    indicator.addEventListener('click', () => {
+        clearInterval(slideTimer); // Otomatik geçişi durdur
+        goToSlide(index);
+        slideTimer = setInterval(nextSlide, slideInterval); // Tıklamadan sonra otomatik geçişi tekrar başlat
+    });
+});
+
+</script>
+
+<script src="https://kit.fontawesome.com/d497048b92.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<style>
+.undericonsup{
+    position: absolute;
+    bottom:10vh;
+    width: 90%; 
+}
+/* Genel düzen */
+#main-container {
+    display: flex;
+}
+.underIcons{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: stretch;
+    justify-content: space-evenly;
+}
+/* Navbar düzeni */
+#navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 77.3%;
+    background-color: white;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Logo düzeni */
+#logo {
+    display: flex;
+    align-items: center;
+}
+
+/* Sol taraftaki logo resmi */
+.logoImage img {
+    background-color: transparent;
+    width: 100px; /* İstediğin boyutta resmi ayarlayabilirsin */
+    margin-right: 10px;
+}
+
+/* Sağ taraftaki metin bölümü */
+.logoBigText {
+    border-left: 2px solid blue; /* Sol tarafta mavi ince çizgi */
+    padding-left: 10px; /* Yazı ile çizgi arası boşluk */
+}
+
+/* Üstteki büyük yazı */
+#logoText {
+    font-size: 2rem;
+    color: blue; /* Mavi renk */
+    font-family: 'Arial', sans-serif; /* Font-family tercihi */
+    display: block;
+}
+
+/* Alttaki küçük yazı */
+#logoTextUnder {
+    font-size: 0.9rem;
+    color: red; /* Logo ile aynı renk */
+    font-family: 'Arial', sans-serif;
+}
+
+/* Navbar link düzeni */
+#nav-links {
+    list-style: none;
+    display: flex;
+}
+
+#nav-links li {
+    font-weight: bold;
+}
+
+#nav-links a {
+    text-decoration: none;
+    color: #333;
+}
+
+/* Sol içerik alanı */
+#left-side {
+    width: 75%;
+    padding: 80px 20px 20px 20px; /* Navbar'a alan bırakmak için üst padding */
+}
+
+/* Supplera başlık ve resim */
+#title-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#title-section h1 {
+    font-size: 2.5rem;
+}
+
+#title-image {
+    width: 50%;
+    max-width: 100%;
+    max-height: 40vh; /* Resmin yüksekliğini sınırladık */
+    height: auto; /* Resmin genişliğine göre oranla */
+    border-radius: 10px;
+    object-fit: contain; /* Resmin oranını koru ve içeriğe uydur */
+}
+
+/* İçerik alanı */
+.red-heading {
+    font-size: 2rem;
+    color: #d32f2f;
+}
+
+#read-more {
+    display: inline-block;
+    background-color: #ff6f61;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    margin: 20px 0; /* Sol hizalı yap */
+    align-self: flex-start;
+}
+
+#carousel {
+    width: 100%;
+    height: 300px;
+    position: relative;
+    overflow: hidden;
+}
+
+.carousel-slide {
+    display: flex;
+    width: 500%; /* 5 resim olduğundan genişlik 500% */
+    transition: transform 0.5s ease-in-out;
+}
+
+#carousel img {
+    width: 100%;
+    height: 100%;
+}
+
+.carousel-indicators {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.indicator {
+    width: 40px;
+    height: 5px;
+    background-color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.indicator.active {
+    background-color: rgba(255, 255, 255, 1);
+}
+
+
+
+/* Sağ sabit giriş paneli */
+#sidebar {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 20%;
+    height: 100vh;
+    background-color: #e0f7fa;
+    padding: 20px;
+    box-shadow: -3px 0 5px rgba(0, 0, 0, 0.1);
+    z-index: 11;
+}
+
+/* Search input ve ikon */
+#search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 70%;
+    padding: 5px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+#search-container input {
+    width: 100%;
+    padding-left: 30px; /* Sol tarafa simge için boşluk bırak */
+    height: 30px;
+    border: none;
+    outline: none;
+}
+
+#search-container i {
+    position: absolute;
+    left: 10px; /* İkonu sol tarafa yerleştir */
+    top: 50%;
+    transform: translateY(-50%); /* Ortalamak için */
+    color: #555;
+}
+
+.globe-icon {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+    color: #555;
+    font-size: 1rem;
+}
+
+#login-section {
+    text-align: center;
+    margin-top: 40px;
+}
+#logoText{
+    color: blue;
+}
+
+#login-section .fas {
+    margin-bottom: 20px;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-form input {
+    width: 90%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.btn-login {
+    background-color: #ff6f61;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#forgot-password {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.importantPadding {
+    padding: 0px !important;
+    line-height: normal !important;
+    text-align: left !important;
+    font-size: 1.5em !important;
+}
+.up-input {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+}
+.login-icon-bigger{
+    font-size: 5em;
+}
+.up-carosel-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    width: 50%;
+    padding: 20px;
+    height: auto; /* Yüksekliği yazıya göre ayarla */
+    max-height: 400px; /* Bu bölümün maksimum yüksekliğini sınırlıyoruz */
+}
+
+
+
+
+.content-up {
+    display: flex;
+    flex-direction: row; /* Resim ve yazı yan yana */
+    justify-content: space-between;
+    padding: 20px;
+}
+
+.content-down {
+    padding: 20px;
+    text-align: left; /* "Devamını Oku" butonu solda hizalı */
+}
+
+.importantPadding h1, .importantPadding h2, .importantPadding p {
+    margin: 0; /* Aralıkları minimumda tut */
+    padding-bottom: 10px; /* Elemanlar arasındaki boşluğu kontrol et */
+}
+/* Responsive ayarlar */
+@media (max-width: 768px) {
+    .content-up {
+        flex-direction: column; /* Küçük ekranlarda resim ve yazılar alt alta gelir */
+    }
+
+    #title-image {
+        width: 100%; /* Küçük ekranlarda resim tam genişliği kaplasın */
+        height: auto; /* Yükseklik bozulmasın */
+    }
+
+    .up-carosel-left {
+        width: 100%;
+        text-align: center; /* Küçük ekranlarda yazılar ortalansın */
+    }
+}
+</style>

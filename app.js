@@ -4,11 +4,12 @@ const path = require('path');
 const session = require('express-session');
 const userRoutes = require('./routes/user'); // user.js dosyasını dahil et
 
+
 const app = express();
 
 app.use(bodyParser.json({ limit: '10mb' }));  // JSON verisi için limit
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));  // URL-encoded verisi için limit
-
+app.use(express.static('public'));
 
 const port = 3000;
 
