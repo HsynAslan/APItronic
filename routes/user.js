@@ -110,6 +110,11 @@ function sendVerificationEmail(toEmail, verificationCode) {
         }
     });
 }
+
+router.get('/dashboard2', (req, res) => {
+    res.render('dashboard2'); // dashboard2.ejs'yi render eder
+});
+
 const { getDigiKeyPartDetails } = require('../apis/digikeyAPI');
 // Her part numarası için DigiKey'den detayları almak için route
 router.get('/digikey/partdetails/:partNumber', async (req, res) => {
@@ -264,7 +269,7 @@ router.post('/verify-email', (req, res) => {
                     }
 
                     // Doğrulama başarılı; kullanıcıyı dashboard'a yönlendir
-                    res.redirect('/dashboard');
+                    res.redirect('/dashboard2');
                 });
             } else {
                 // Yanlış kod; hata mesajı ile doğrulama sayfasına dön
@@ -332,7 +337,7 @@ router.post('/login', (req, res) => {
 
             // Başarılı giriş
             req.session.user = user;
-            res.redirect('/dashboard');
+            res.redirect('/dashboard2');
         });
     });
 });

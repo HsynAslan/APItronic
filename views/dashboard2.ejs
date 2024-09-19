@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard 2</title>
+    <style>
+        /* Genel düzen */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh; /* Tam ekran boyutunda olacak */
+        }
+
+        /* Sol menü */
+        #sidebar {
+    width: 90%;
+    background-color: white; /* Arka plan rengini beyaz yaptık */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Hafif bir gölge eklendi */
+}
+
+#sidebar a {
+    color: #2c3e50;
+    text-decoration: none;
+    margin: 15px 0;
+    font-size: 1.2rem;
+    transition: box-shadow 0.3s ease; /* Hover efektini daha akıcı yap */
+}
+
+/* Hover durumunda gölge efekti */
+#sidebar a:hover {
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2); /* Hafif bir gölge */
+    border-radius: 5px; /* Hafif köşe yuvarlatma */
+}
+
+        /* Sağ içerik alanı */
+        #content {
+            width: 80%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+        }
+
+        #select-container {
+    display: flex;
+    width: 100%;
+    /* text-align: center; */
+    margin-bottom: 20px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    
+}
+
+        #select-container select {
+            width: 60%;
+            padding: 10px;
+            font-size: 1.2rem;
+        }
+
+        /* Alt taraftaki içerik alanı (daha sonra doldurulacak) */
+        #empty-container {
+            width: 100%;
+            height: 400px; /* Yükseklik büyük olsun dedin */
+            background-color: #5ce1e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        /* Genel Logo Düzeni */
+#logo {
+    display: flex;
+    align-items: center;
+    padding-bottom: 20px; /* Alt tarafa biraz boşluk ekledik */
+}
+
+/* Logo Resmi */
+.logoImage img {
+    width: 60px; /* Logonun genişliği */
+    margin-right: 10px; /* Resmin sağında biraz boşluk */
+}
+
+/* Logonun Sağındaki Metinler */
+#logoBigText {
+    border-left: 2px solid blue; /* Sol tarafa mavi bir çizgi ekledik */
+    padding-left: 10px; /* Çizgi ile metin arasına boşluk */
+    display: flex;
+    flex-direction: column;
+}
+
+#logoText {
+    font-size: 1.8rem; /* Üstteki büyük yazı */
+    color: blue; /* Yazı rengi mavi */
+}
+
+#logoTextUnder {
+    font-size: 0.9rem; /* Altındaki küçük yazı */
+    color: red; /* Yazı rengi kırmızı */
+}
+.selectButton{
+    background-color: #5ce1e6; /* Butonun arka plan rengi */
+    border: none; /* Kenarlık yok */
+    color: black; /* Yazı rengi siyah */
+    padding: 10px 20px; /* İç boşluklar */
+    text-align: center; /* Yazıyı ortala */
+    text-decoration: none; /* Alt çizgiyi kaldır */
+    display: inline-block; /* Buton olarak görünmesini sağlar */
+    font-size: 1rem; /* Yazı boyutu */
+    border-radius: 25px; /* Köşeleri yuvarlat */
+    cursor: pointer; /* Fare imlecini işaretçiye çevirir */
+    font-family: Arial, sans-serif; /* Yazı tipi */
+    transition: background-color 0.5s ease; /* Geçiş süresi ve yumuşaklık ayarı */
+}
+.selectButton:hover{
+    background-color: #4bc0c5; /* Üzerine gelince renk değişimi */
+    transition: background-color 0.5s ease; /* Geçiş süresi ve yumuşaklık ayarı */
+    
+}
+    </style>
+</head>
+<body>
+    <div id="container">
+        <!-- Sol Menü -->
+         <div class="leftSide">
+        <div id="logo">
+            <div class="logoImage"><img src="/images/logo.png" alt="Logo" id="logo-img"></div>
+
+            <div id="logoBigText">
+                <span id="logoText">SUPPLERA</span>
+                <span id="logoTextUnder">Risk Free Your Chain</span>
+            </div>
+            
+        </div>
+        <div id="sidebar">
+            <a href="/dashboard">BOM Ekle</a>
+            <a href="#">Risk Özeti</a>
+            <a href="#">Ürünler</a>
+            <a href="#">BOM Listeleri</a>
+            <a href="#">Ayrıntılı Raporlar</a>
+            <a href="#">Rapor Ayarları</a>
+            <a href="#">İş Oluşturma</a>
+            <a href="#">Tedarikçi Analizleri</a>
+            <a href="#">Takvim</a>
+        </div>
+         </div>
+        <!-- Sağ İçerik Alanı -->
+        <div id="content">
+            <!-- Select Option Alanı -->
+            <div id="select-container">
+                <span style="margin-right: 2vh; font-weight: bold; font-size:large;">İş Getir</span>
+                <select id="data-selector" style="margin-right: 2vh;">
+                    <option value="">Lütfen bir seçenek seçin</option>
+                    <!-- Seçenekler daha sonra dinamik olarak eklenecek -->
+                </select>
+                <button style="margin-right: 1vh;" class="selectButton">Mail Gönder</button>
+                <button class="selectButton">Bilgisayara Kaydet</button>
+            </div>
+
+            <!-- Alt taraftaki boş içerik alanı -->
+            <div id="empty-container">
+                İçerik buraya yüklenecek...
+            </div>
+        </div>
+    </div>
+</body>
+</html>
