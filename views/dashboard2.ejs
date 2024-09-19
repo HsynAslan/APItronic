@@ -130,6 +130,48 @@
     transition: background-color 0.5s ease; /* Geçiş süresi ve yumuşaklık ayarı */
     
 }
+
+/* Tablo konteynerini sınırlandır ve overflow ekle */
+#table-container {
+    max-height: 400px; /* Tabloya belirli bir yükseklik veriyoruz */
+    overflow-y: auto; /* Yatay scroll ekliyoruz */
+    border: 1px solid #ccc; /* Dış sınırlar */
+}
+
+/* Tablo düzeni */
+#part-details-table {
+    width: 100%;
+    border-collapse: collapse; /* Kenarları birleştir */
+}
+
+/* Sabit kalan başlıklar */
+#part-details-table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #f9f9f9; /* Sabit başlıklar için arka plan */
+    z-index: 2;
+    text-align: left;
+    padding: 10px;
+    border-bottom: 2px solid #ddd;
+    font-weight: bold;
+}
+
+/* Satır düzeni */
+#part-details-table tbody td {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
+
+/* Tabloya arka plan ve genel stil */
+#part-details-table tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+/* Scroll edilen tablo için sütunların genişliğini belirle */
+#part-details-table th, #part-details-table td {
+    min-width: 150px; /* Kolonların minimum genişliği */
+}
     </style>
 </head>
 <body>
@@ -161,20 +203,76 @@
         <div id="content">
             <!-- Select Option Alanı -->
             <div id="select-container">
-                <span style="margin-right: 2vh; font-weight: bold; font-size:large;">İş Getir</span>
-                <select id="data-selector" style="margin-right: 2vh;">
-                    <option value="">Lütfen bir seçenek seçin</option>
-                    <!-- Seçenekler daha sonra dinamik olarak eklenecek -->
+                <select id="bom-selector">
+                    <option value="">Bir BOM dosyası seçin</option>
+                    <% bomFiles.forEach(function(bom) { %>
+                        <option value="<%= bom.id %>"><%= bom.file_name %></option>
+                    <% }) %>
                 </select>
-                <button style="margin-right: 1vh;" class="selectButton">Mail Gönder</button>
-                <button class="selectButton">Bilgisayara Kaydet</button>
             </div>
 
             <!-- Alt taraftaki boş içerik alanı -->
-            <div id="empty-container">
-                İçerik buraya yüklenecek...
-            </div>
+           <!-- Alt taraftaki boş içerik alanı -->
+
+           <div id="table-container">
+            <table id="part-details-table">
+                <thead>
+                    <tr>
+                        <th>Üretici Parça Numarası</th>
+                        <th>Üretici</th>
+                        <th>Adet</th>
+                        <th>Stok</th>
+                        <th>Birim Fiyat</th>
+                        <th>Toplam</th>
+                        <th>Önerilen Tedarikçi</th>
+                    </tr>
+                </thead>
+                <tbody id="part-details-body">
+                    <!-- Sayfa yüklendiğinde tablo boş olacak, çünkü BOM seçilmedi -->
+                </tbody>
+            </table>
+        </div>
+        
+        
+
         </div>
     </div>
 </body>
+
+<script>
+    // BOM dosyası seçildiğinde part detaylarını getir ve tabloyu doldur
+    document.getElementById('bom-selector').addEventListener('change', async function() {
+        const fileId = this.value;
+        if (fileId) {
+            const response = await fetch(`/get-part-details/${fileId}`);
+            const data = await response.json();
+            populatePartDetails(data);
+        }
+    });
+
+    function populatePartDetails(data) {
+        const container = document.getElementById('part-details-body');
+        container.innerHTML = ''; // Önce eski içeriği temizleyelim
+        
+        if (data.partDetails && data.partDetails.length > 0) {
+            data.partDetails.forEach(detail => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${detail.partNumber}</td>
+                    <td>${detail.manufacturer || 'Bilinmiyor'}</td>
+                    <td>${detail.quantity || 'Bilinmiyor'}</td> <!-- Quantity bilgisini buraya ekliyoruz -->
+                    <td>${detail.stock || 'N/A'}</td>
+                    <td>${detail.unitPrice || 'N/A'}</td>
+                    <td>${detail.totalPrice || 'N/A'}</td>
+                    <td>${detail.recommendedSupplier || 'N/A'}</td>
+                `;
+                container.appendChild(row);
+            });
+        } else {
+            container.innerHTML = '<tr><td colspan="7">Bu dosya için part numarası bulunamadı.</td></tr>';
+        }
+    }
+</script>
+
+
 </html>

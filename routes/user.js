@@ -111,9 +111,81 @@ function sendVerificationEmail(toEmail, verificationCode) {
     });
 }
 
-router.get('/dashboard2', (req, res) => {
-    res.render('dashboard2'); // dashboard2.ejs'yi render eder
+
+router.get('/get-part-details/:fileId', async (req, res) => {
+    const fileId = req.params.fileId;
+
+    // Veritabanından BOM dosyasını çekiyoruz
+    db.query('SELECT file_content FROM bom_files WHERE id = ?', [fileId], async (err, results) => {
+        if (err || results.length === 0) {
+            console.error('Dosya bulunamadı:', err);
+            return res.status(404).json({ message: 'Dosya bulunamadı.' });
+        }
+
+        const fileBuffer = Buffer.from(results[0].file_content); // Excel dosyasını yükle
+        const excelData = loadExcel(fileBuffer); // Excel dosyasını JSON formatına çeviriyoruz
+        const partDetailsFromExcel = filterPartNumbersAndQuantities(excelData); // Part numaraları ve quantity bilgilerini alıyoruz
+
+        // DigiKey API sonuçlarını al
+        const digikeyResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
+            try {
+                const result = await callDigiKeyAPI(partDetail.partNumber); // DigiKey API'yi çağır
+                return {
+                    partNumber: partDetail.partNumber,
+                    manufacturer: result?.Product?.Manufacturer?.Value || 'N/A',
+                    unitPrice: result?.Product?.UnitPrice || 'N/A',
+                    stock: result?.Product?.QuantityAvailable || 'N/A',
+                    totalPrice: (result?.Product?.UnitPrice * partDetail.quantity).toFixed(2) || 'N/A',
+                    quantity: partDetail.quantity || 'Bilinmiyor',  // Quantity (Adet) bilgisini ekliyoruz
+                    recommendedSupplier: 'DigiKey'
+                };
+            } catch (error) {
+                console.error(`DigiKey API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
+                return {
+                    partNumber: partDetail.partNumber,
+                    manufacturer: 'N/A',
+                    unitPrice: 'N/A',
+                    stock: 'N/A',
+                    totalPrice: 'N/A',
+                    quantity: partDetail.quantity || 'Bilinmiyor', // Hata durumunda da quantity bilgisini ekliyoruz
+                    recommendedSupplier: 'DigiKey'
+                };
+            }
+        }));
+
+        // Part detaylarını JSON olarak frontend'e gönder
+        res.json({
+            partDetails: digikeyResults
+        });
+    });
 });
+
+
+
+
+// Dashboard2 sayfası rotası
+router.get('/dashboard2', (req, res) => {
+    if (req.session.user) {
+        const userId = req.session.user.id;
+
+        // Kullanıcının BOM dosyalarını çek
+        db.query('SELECT id, file_name FROM bom_files WHERE user_id = ?', [userId], (err, bomFiles) => {
+            if (err) {
+                console.error(err);
+                return res.send('Bir hata oluştu.');
+            }
+
+            // BOM dosyalarını dashboard2.ejs'ye gönder
+            res.render('dashboard2', {
+                email: req.session.user.email,
+                bomFiles: bomFiles // BOM dosyalarını sayfaya gönderiyoruz
+            });
+        });
+    } else {
+        res.redirect('/login');
+    }
+});
+
 
 const { getDigiKeyPartDetails } = require('../apis/digikeyAPI');
 // Her part numarası için DigiKey'den detayları almak için route
