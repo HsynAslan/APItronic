@@ -172,6 +172,32 @@
 #part-details-table th, #part-details-table td {
     min-width: 150px; /* Kolonların minimum genişliği */
 }
+
+
+.details-content {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.api-column {
+    text-align: center;
+    width: 18%; /* Her sütunun genişliği */
+    padding: 10px;
+}
+
+.api-logo {
+    width: 100px; /* Logonun genişliği */
+    height: auto; /* Yükseklik otomatik */
+    margin-bottom: 10px;
+}
+
+.api-column p {
+    margin: 5px 0;
+}
+
     </style>
 </head>
 <body>
@@ -203,75 +229,315 @@
         <div id="content">
             <!-- Select Option Alanı -->
             <div id="select-container">
-                <select id="bom-selector">
-                    <option value="">Bir BOM dosyası seçin</option>
-                    <% bomFiles.forEach(function(bom) { %>
-                        <option value="<%= bom.id %>"><%= bom.file_name %></option>
-                    <% }) %>
-                </select>
+                <form id="bom-form" action="/dashboard2" method="GET">
+                    <select name="fileId" id="bom-selector" onchange="this.form.submit()">
+                        <option value="">Bir BOM dosyası seçin</option>
+                        <% bomFiles.forEach(function(bom) { %>
+                            <option value="<%= bom.id %>" <%= bom.id == selectedFileId ? 'selected' : '' %> >
+                                <%= bom.file_name %>
+                            </option>
+                        <% }) %>
+                    </select>
+                    
+                </form>
             </div>
+        
+            <!-- Tablo Alanı -->
+            <div id="table-container">
+                <table id="part-details-table">
+                    <thead>
+                        <tr>
+                            <th>Üretici Parça Numarası</th>
+                            <th>Üretici</th>
+                            <th>Adet</th>
+                            <th>Stok</th>
+                            <th>Birim Fiyat</th>
+                            <th>Toplam</th>
+                            <th>Önerilen Tedarikçi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="part-details-body">
+                        <% if (bomDetails && bomDetails.length > 0) { %>
+                            <% bomDetails.forEach(function(detail, index) { %>
+                                <tr class="productRow" data-index="<%= index %>" data-part-number="<%= detail.partNumber %>">
+                                    <td><%= detail.partNumber %></td>
+                                    <td><%= detail.manufacturer || 'Bilinmiyor' %></td>
+                                    <td><%= detail.quantity || 'Bilinmiyor' %></td>
+                                    <td><%= detail.stock || 'N/A' %></td>
+                                    <td>$<%= detail.unitPrice || 'N/A' %></td>
+                                    <td>$<%= detail.totalPrice || 'N/A' %></td>
+                                    <td><%= detail.recommendedSupplier || 'N/A' %></td>
+                                </tr>
+                    
+                                <!-- Her part numarası için gizlenmiş div alanı -->
+                                <tr id="details-<%= index %>" style="display: none;">
+                                    <td colspan="7">
+                                        <div class="details-content" id="detail-container-<%= index %>">
+                                            <!-- DigiKey Bilgileri -->
+                                            <div class="api-column">
+                                                <img src="/images/digikey.png" alt="DigiKey" class="api-logo">
+                                                <p>Parça Numarası: <%= detail.partNumber %></p>
+                                                <p>Stok: <%= detail.stock %></p>
+                                                <p>Fiyat: $<%= detail.unitPrice %></p>
+                                                <p><a href="#" target="_blank">Detaylar</a></p>
+                                            </div>
+                                            
+                                            <!-- Mouser Bilgileri -->
+                                            <div class="api-column">
+                                                <img src="/images/mouser.jpg" alt="Mouser" class="api-logo">
+                                                <p>Parça Numarası: <%= detail.partNumber %></p>
+                                                <p>Stok: N/A</p> <!-- Bu Mouser'dan gelecek -->
+                                                <p>Fiyat: N/A</p> <!-- Bu Mouser'dan gelecek -->
+                                                <p><a href="#" target="_blank">Detaylar</a></p>
+                                            </div>
 
-            <!-- Alt taraftaki boş içerik alanı -->
-           <!-- Alt taraftaki boş içerik alanı -->
+                                            <!-- avnet Bilgileri -->
+                                            <div class="api-column">
+                                                <img src="/images/Avnet.png" alt="Avnet" class="api-logo">
+                                                <p>Parça Numarası: <%= detail.partNumber %></p>
+                                                <p>Stok: N/A</p> <!-- Bu Mouser'dan gelecek -->
+                                                <p>Fiyat: N/A</p> <!-- Bu Mouser'dan gelecek -->
+                                                <p><a href="#" target="_blank">Detaylar</a></p>
+                                            </div>
 
-           <div id="table-container">
-            <table id="part-details-table">
-                <thead>
-                    <tr>
-                        <th>Üretici Parça Numarası</th>
-                        <th>Üretici</th>
-                        <th>Adet</th>
-                        <th>Stok</th>
-                        <th>Birim Fiyat</th>
-                        <th>Toplam</th>
-                        <th>Önerilen Tedarikçi</th>
-                    </tr>
-                </thead>
-                <tbody id="part-details-body">
-                    <!-- Sayfa yüklendiğinde tablo boş olacak, çünkü BOM seçilmedi -->
-                </tbody>
-            </table>
+                                            <!-- future Bilgileri -->
+                                            <div class="api-column">
+                                                <img src="/images/future.jpeg" alt="future" class="api-logo">
+                                                <p>Parça Numarası: <%= detail.partNumber %></p>
+                                                <p>Stok: N/A</p> <!-- Bu Mouser'dan gelecek -->
+                                                <p>Fiyat: N/A</p> <!-- Bu Mouser'dan gelecek -->
+                                                <p><a href="#" target="_blank">Detaylar</a></p>
+                                            </div>
+
+                                            <!-- utmel Bilgileri -->
+                                            <div class="api-column">
+                                                <img src="/images/utmel.png" alt="utmel" class="api-logo">
+                                                <p>Parça Numarası: <%= detail.partNumber %></p>
+                                                <p>Stok: N/A</p> <!-- Bu Mouser'dan gelecek -->
+                                                <p>Fiyat: N/A</p> <!-- Bu Mouser'dan gelecek -->
+                                                <p><a href="#" target="_blank">Detaylar</a></p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="7">Bu dosya için veri bulunamadı.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                    
+                    
+                </table>
+            </div>
         </div>
         
-        
-
-        </div>
     </div>
 </body>
 
 <script>
-    // BOM dosyası seçildiğinde part detaylarını getir ve tabloyu doldur
-    document.getElementById('bom-selector').addEventListener('change', async function() {
+document.addEventListener('DOMContentLoaded', function () {
+    const productRows = document.querySelectorAll('.productRow');
+    let openIndex = null;
+
+    productRows.forEach((row, index) => {
+        row.addEventListener('click', function () {
+            const detailsRow = document.getElementById(`details-${index}`);
+            
+            // Başka bir satır açıksa önce onu kapatıyoruz
+            if (openIndex !== null && openIndex !== index) {
+                document.getElementById(`details-${openIndex}`).style.display = 'none';
+            }
+
+            // Eğer tıklanan satır açıksa kapat, değilse aç
+            if (detailsRow.style.display === 'none' || detailsRow.style.display === '') {
+                detailsRow.style.display = 'table-row';
+                openIndex = index;
+            } else {
+                detailsRow.style.display = 'none';
+                openIndex = null;
+            }
+        });
+    });
+});
+
+
+    document.getElementById('bom-selector').addEventListener('change', function() {
         const fileId = this.value;
         if (fileId) {
-            const response = await fetch(`/get-part-details/${fileId}`);
-            const data = await response.json();
-            populatePartDetails(data);
+            window.location.href = `/dashboard2/${fileId}`; // Seçilen BOM dosyasına göre sayfayı yönlendiriyoruz
         }
     });
 
-    function populatePartDetails(data) {
-        const container = document.getElementById('part-details-body');
-        container.innerHTML = ''; // Önce eski içeriği temizleyelim
-        
-        if (data.partDetails && data.partDetails.length > 0) {
-            data.partDetails.forEach(detail => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${detail.partNumber}</td>
-                    <td>${detail.manufacturer || 'Bilinmiyor'}</td>
-                    <td>${detail.quantity || 'Bilinmiyor'}</td> <!-- Quantity bilgisini buraya ekliyoruz -->
-                    <td>${detail.stock || 'N/A'}</td>
-                    <td>${detail.unitPrice || 'N/A'}</td>
-                    <td>${detail.totalPrice || 'N/A'}</td>
-                    <td>${detail.recommendedSupplier || 'N/A'}</td>
-                `;
-                container.appendChild(row);
-            });
-        } else {
-            container.innerHTML = '<tr><td colspan="7">Bu dosya için part numarası bulunamadı.</td></tr>';
+    document.getElementsByClassName('productRow').addEventListener('click',function(){
+        console.log("row a tıkladı");
+
+        // productRow sınıfına sahip her bir elemana tıklama olayını ekle
+const productRows = document.getElementsByClassName('productRow');
+let openIndex = null;  // Şu anda hangi satırın açık olduğunu takip etmek için
+
+// HTMLCollection olan productRows'u array'e çevirip foreach ile döngü kuralım
+Array.from(productRows).forEach((row, index) => {
+    row.addEventListener('click', function () {
+        const partNumber = row.getAttribute('data-part-number');
+        const detailsRow = document.getElementById(`details-${index}`);
+
+        // Eğer başka bir satır açık ise onu kapat
+        if (openIndex !== null && openIndex !== index) {
+            document.getElementById(`details-${openIndex}`).style.display = 'none';
         }
+
+        // Eğer detay satırı kapalıysa aç ve içeriği doldur
+        if (detailsRow.style.display === 'none' || detailsRow.style.display === '') {
+            detailsRow.innerHTML = `
+                <td colspan="7">
+                    <div class="details-content">
+                        <div class="api-column">
+                            <img src="/images/digikey-logo.png" alt="DigiKey" class="api-logo">
+                            <p>Parça Numarası: ${partNumber}</p>
+                            <p>Stok: 100</p>
+                            <p>Fiyat: $10.00</p>
+                            <p><a href="#">Detaylar</a></p>
+                        </div>
+                        <div class="api-column">
+                            <img src="/images/mouser-logo.png" alt="Mouser" class="api-logo">
+                            <p>Parça Numarası: ${partNumber}</p>
+                            <p>Stok: 50</p>
+                            <p>Fiyat: $15.00</p>
+                            <p><a href="#">Detaylar</a></p>
+                        </div>
+                        <!-- Diğer API'ler için sütunlar ekleyebilirsin -->
+                    </div>
+                </td>
+            `;
+            detailsRow.style.display = 'table-row';  // Detay satırını göster
+            openIndex = index;  // Açık olan satırı güncelle
+        } else {
+            detailsRow.style.display = 'none';  // Eğer zaten açık ise kapat
+            openIndex = null;
+        }
+    });
+});
+
+
+
+    });
+    
+
+function populatePartDetails(data) {
+    const container = document.getElementById('part-details-body');
+    container.innerHTML = ''; // Temizle
+
+    if (data.partDetails && data.partDetails.length > 0) {
+        data.partDetails.forEach((detail, index) => {
+            const row = document.createElement('tr');
+            row.classList.add('part-row');  // Satırları part-row sınıfıyla işaretle
+            row.setAttribute('data-part-number', detail.partNumber);  // Part numarasını veri olarak ekliyoruz
+            row.setAttribute('data-index', index);  // Index bilgisini ekliyoruz
+
+            row.innerHTML = `
+                <td>${detail.partNumber}</td>
+                <td>${detail.manufacturer || 'Bilinmiyor'}</td>
+                <td>${detail.quantity || 'Bilinmiyor'}</td>
+                <td>${detail.stock || 'N/A'}</td>
+                <td>$${detail.unitPrice || 'N/A'}</td>
+                <td>$${detail.totalPrice || 'N/A'}</td>
+                <td>${detail.recommendedSupplier || 'N/A'}</td>
+            `;
+
+            // Detay satırı
+            const detailsRow = document.createElement('tr');
+            detailsRow.id = `details-${index}`;
+            detailsRow.style.display = 'none'; // Başlangıçta gizli olacak
+            detailsRow.innerHTML = `<td colspan="7"></td>`;  // Detaylar buraya eklenecek
+
+            container.appendChild(row);
+            container.appendChild(detailsRow);  // Detay satırını ekliyoruz
+        });
+
+        addRowClickListeners(); // Satır tıklama olaylarını ekle
+    } else {
+        container.innerHTML = '<tr><td colspan="7">Bu dosya için part numarası bulunamadı.</td></tr>';
     }
+}
+
+    function addRowClickListeners() {
+        console.log("addRowClickListeners a girdi");
+    const partRows = document.querySelectorAll('.part-row');
+    let openIndex = null;
+
+    partRows.forEach(row => {
+        row.addEventListener('click', async function () {
+            console.log("Satıra tıklandı: ", this.getAttribute('data-part-number'));
+            const partNumber = this.getAttribute('data-part-number');
+            const index = this.getAttribute('data-index');
+            const detailsRow = document.getElementById(`details-${index}`);
+
+            if (openIndex !== null && openIndex !== index) {
+                document.getElementById(`details-${openIndex}`).style.display = 'none';  // Önceki açık satırı kapat
+            }
+
+            if (detailsRow.style.display === 'none' || detailsRow.style.display === '') {
+                const digikeyData = await fetch(`/api/digikey/${partNumber}`).then(res => res.json());
+                const mouserData = await fetch(`/api/mouser/${partNumber}`).then(res => res.json());
+
+                const api3Data = { partNumber: partNumber, stock: "N/A", unitPrice: "N/A", productUrl: "#" };
+                const api4Data = { partNumber: partNumber, stock: "N/A", unitPrice: "N/A", productUrl: "#" };
+                const api5Data = { partNumber: partNumber, stock: "N/A", unitPrice: "N/A", productUrl: "#" };
+
+                detailsRow.innerHTML = `
+                    <td colspan="7">
+                        <div class="details-content">
+                            <div class="api-column">
+                                <img src="/images/digikey-logo.png" alt="DigiKey" class="api-logo">
+                                <p>Parça Numarası: ${digikeyData.partNumber}</p>
+                                <p>Stok: ${digikeyData.stock}</p>
+                                <p>Fiyat: ${digikeyData.unitPrice}</p>
+                                <p><a href="${digikeyData.productUrl}" target="_blank">Detaylar</a></p>
+                            </div>
+                            <div class="api-column">
+                                <img src="/images/mouser-logo.png" alt="Mouser" class="api-logo">
+                                <p>Parça Numarası: ${mouserData.partNumber}</p>
+                                <p>Stok: ${mouserData.stock}</p>
+                                <p>Fiyat: ${mouserData.unitPrice}</p>
+                                <p><a href="${mouserData.productUrl}" target="_blank">Detaylar</a></p>
+                            </div>
+                            <div class="api-column">
+                                <img src="/images/api3-logo.png" alt="API 3" class="api-logo">
+                                <p>Parça Numarası: ${api3Data.partNumber}</p>
+                                <p>Stok: ${api3Data.stock}</p>
+                                <p>Fiyat: ${api3Data.unitPrice}</p>
+                                <p><a href="${api3Data.productUrl}" target="_blank">Detaylar</a></p>
+                            </div>
+                            <div class="api-column">
+                                <img src="/images/api4-logo.png" alt="API 4" class="api-logo">
+                                <p>Parça Numarası: ${api4Data.partNumber}</p>
+                                <p>Stok: ${api4Data.stock}</p>
+                                <p>Fiyat: ${api4Data.unitPrice}</p>
+                                <p><a href="${api4Data.productUrl}" target="_blank">Detaylar</a></p>
+                            </div>
+                            <div class="api-column">
+                                <img src="/images/api5-logo.png" alt="API 5" class="api-logo">
+                                <p>Parça Numarası: ${api5Data.partNumber}</p>
+                                <p>Stok: ${api5Data.stock}</p>
+                                <p>Fiyat: ${api5Data.unitPrice}</p>
+                                <p><a href="${api5Data.productUrl}" target="_blank">Detaylar</a></p>
+                            </div>
+                        </div>
+                    </td>
+                `;
+
+                detailsRow.style.display = 'table-row';
+                openIndex = index;
+            } else {
+                detailsRow.style.display = 'none';
+                openIndex = null;
+            }
+        });
+    });
+}
+
 </script>
 
 
