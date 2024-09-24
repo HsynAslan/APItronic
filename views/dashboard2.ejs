@@ -44,7 +44,7 @@
 
         /* Sağ içerik alanı */
         #content {
-            width: 80%;
+           
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -146,15 +146,18 @@
 
 /* Tablo düzeni */
 #part-details-table {
-    width: 100%;
-    border-collapse: collapse; /* Kenarları birleştir */
+    width: 90%;
+    border-collapse: separate; /* Hücrelerin birleşmesini engeller */
+    border-spacing: 3px; /* Hücreler arası boşluk */
+    
 }
 
 /* Sabit kalan başlıklar */
 #part-details-table thead th {
+    background-color: #d9d9d9 !important;
     position: sticky;
     top: 0;
-    background-color: #f9f9f9; /* Sabit başlıklar için arka plan */
+    margin: 5px;
     z-index: 2;
     text-align: left;
     padding: 10px;
@@ -164,15 +167,17 @@
 
 /* Satır düzeni */
 #part-details-table tbody td {
+    
+    background-color: #fffffd;
     padding: 10px;
     border-bottom: 1px solid #ddd;
     text-align: left;
 }
 
 /* Tabloya arka plan ve genel stil */
-#part-details-table tbody tr:nth-child(even) {
+/* #part-details-table tbody tr:nth-child(even) {
     background-color: #f2f2f2;
-}
+} */
 
 /* Scroll edilen tablo için sütunların genişliğini belirle */
 #part-details-table th, #part-details-table td {
@@ -203,7 +208,20 @@
 .api-column p {
     margin: 5px 0;
 }
+.rightBigDiv{
+    padding: 5vh;
+}
+.uContent{
+    height: 80%;
+    background-color: #5ce2e7;
+}
+.theadClass{
+    background-color: #d9d9d9 !important;
 
+}
+thead.theadClass tr {
+    border-bottom: 5px solid transparent; /* Altta 5px boşluk görünümü için */
+}
     </style>
 </head>
 <body>
@@ -231,27 +249,32 @@
             <a href="#">Takvim</a>
         </div>
          </div>
+         <div class="rightBigDiv">
+           <!-- Select Option Alanı -->
+           <div id="select-container">
+            <form id="bom-form" action="/dashboard2" method="GET">
+                <select name="fileId" id="bom-selector" onchange="this.form.submit()">
+                    <option value="">Bir BOM dosyası seçin</option>
+                    <% bomFiles.forEach(function(bom) { %>
+                        <option value="<%= bom.id %>" <%= bom.id == selectedFileId ? 'selected' : '' %> >
+                            <%= bom.file_name %>
+                        </option>
+                    <% }) %>
+                </select>
+                
+            </form>
+        </div>
+
+        <div class="uContent">
+
         <!-- Sağ İçerik Alanı -->
         <div id="content">
-            <!-- Select Option Alanı -->
-            <div id="select-container">
-                <form id="bom-form" action="/dashboard2" method="GET">
-                    <select name="fileId" id="bom-selector" onchange="this.form.submit()">
-                        <option value="">Bir BOM dosyası seçin</option>
-                        <% bomFiles.forEach(function(bom) { %>
-                            <option value="<%= bom.id %>" <%= bom.id == selectedFileId ? 'selected' : '' %> >
-                                <%= bom.file_name %>
-                            </option>
-                        <% }) %>
-                    </select>
-                    
-                </form>
-            </div>
+          
         
             <!-- Tablo Alanı -->
             <div id="table-container">
                 <table id="part-details-table">
-                    <thead>
+                    <thead class="theadClass">
                         <tr>
                             <th>Üretici Parça Numarası</th>
                             <th>Üretici</th>
@@ -372,7 +395,9 @@
                 </table>
             </div>
         </div>
-        
+
+    </div>
+    </div>
     </div>
     <!-- Bilgi alınamayan ürünler için kırmızı liste -->
 <div id="unavailable-products" style="color: red;">

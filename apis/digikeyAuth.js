@@ -13,8 +13,8 @@ async function regenerateToken() {
     const body = qs.stringify({
         // J1Dh1xnCwwGApOiC93h3lQKUe97G8Bp2 -> hüseyin
         // lNhPGByVlazXNfWpOD8mYG4kGVkD1cLf -> beyza hanım
-        'client_id': 'lNhPGByVlazXNfWpOD8mYG4kGVkD1cLf',
-        'client_secret': 'Koh6WLydkyNmq7HM',
+        'client_id': 'J1Dh1xnCwwGApOiC93h3lQKUe97G8Bp2',
+        'client_secret': 'fJ6PP4jrGdxhdNx0',
         // fJ6PP4jrGdxhdNx0 -> hüso
         // Koh6WLydkyNmq7HM -> beyza hanım
         'grant_type': 'client_credentials'
@@ -50,7 +50,7 @@ async function callDigiKeyAPI(partNumber, token) {
         const response = await axios.get(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'X-DIGIKEY-Client-Id': 'lNhPGByVlazXNfWpOD8mYG4kGVkD1cLf'
+                'X-DIGIKEY-Client-Id': 'J1Dh1xnCwwGApOiC93h3lQKUe97G8Bp2'
             }
         });
         return response.data;
