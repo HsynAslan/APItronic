@@ -276,7 +276,7 @@
                                         <td>$<%= detail.selectedResult.totalPrice || 'N/A' %></td>
                                         <td><%= detail.recommendedSupplier || 'N/A' %></td>
                                     </tr>
-                    
+                        
                                     <!-- Details satırı -->
                                     <tr id="details-<%= detail.selectedResult.partNumber %>" style="display: none;">
                                         <td colspan="7">
@@ -292,7 +292,7 @@
                                                     <p>Lead Time: <%= detail.digikey.leadTime %> gün</p>
                                                     <p>Tedarikçi: DigiKey</p>
                                                 </div>
-                    
+                        
                                                 <!-- Mouser Bilgileri -->
                                                 <div class="api-column">
                                                     <img src="/images/mouser.jpg" alt="Mouser" class="api-logo">
@@ -305,14 +305,50 @@
                                                     <p>Tedarikçi: Mouser</p>
                                                 </div>
                     
-                                                <!-- Seçilen tedarikçi -->
+                                                <!-- Avnet Bilgileri -->
                                                 <div class="api-column">
-                                                    <h4>Önerilen Tedarikçi: <%= detail.recommendedSupplier %></h4>
+                                                    <img src="/images/Avnet.png" alt="Avnet" class="api-logo">
+                                                    <p>Parça Numarası: <%= detail.avnet?.partNumber || 'N/A' %></p>
+                                                    <p>Üretici: <%= detail.avnet?.manufacturer || 'N/A' %></p>
+                                                    <p>Stok: <%= detail.avnet?.stock || 'N/A' %></p>
+                                                    <p>Fiyat: <%= detail.avnet?.unitPrice || 'N/A' %></p>
+                                                    <p>Toplam Fiyat: $<%= detail.avnet?.totalPrice || 'N/A' %></p>
+                                                    <p>Lead Time: <%= detail.avnet?.leadTime || 'N/A' %> gün</p>
+                                                    <p>Tedarikçi: Avnet</p>
                                                 </div>
+                    
+                                                <!-- Future Bilgileri -->
+                                                <div class="api-column">
+                                                    <img src="/images/future.jpeg" alt="Future" class="api-logo">
+                                                    <p>Parça Numarası: <%= detail.future?.partNumber || 'N/A' %></p>
+                                                    <p>Üretici: <%= detail.future?.manufacturer || 'N/A' %></p>
+                                                    <p>Stok: <%= detail.future?.stock || 'N/A' %></p>
+                                                    <p>Fiyat: <%= detail.future?.unitPrice || 'N/A' %></p>
+                                                    <p>Toplam Fiyat: $<%= detail.future?.totalPrice || 'N/A' %></p>
+                                                    <p>Lead Time: <%= detail.future?.leadTime || 'N/A' %> gün</p>
+                                                    <p>Tedarikçi: Future</p>
+                                                </div>
+                    
+                                                <!-- Utmel Bilgileri -->
+                                                <div class="api-column">
+                                                    <img src="/images/utmel.png" alt="Utmel" class="api-logo">
+                                                    <p>Parça Numarası: <%= detail.utmel?.partNumber || 'N/A' %></p>
+                                                    <p>Üretici: <%= detail.utmel?.manufacturer || 'N/A' %></p>
+                                                    <p>Stok: <%= detail.utmel?.stock || 'N/A' %></p>
+                                                    <p>Fiyat: <%= detail.utmel?.unitPrice || 'N/A' %></p>
+                                                    <p>Toplam Fiyat: $<%= detail.utmel?.totalPrice || 'N/A' %></p>
+                                                    <p>Lead Time: <%= detail.utmel?.leadTime || 'N/A' %> gün</p>
+                                                    <p>Tedarikçi: Utmel</p>
+                                                </div>
+                    
+                                                
                                             </div>
                                         </td>
                                     </tr>
-                                <% } %> <!-- recommendedSupplier var mı kontrolü -->
+                                <% } else { %>
+                                    <!-- Ürün bulunamayan satırları tamamen gizle -->
+                                    <tr style="display: none;"></tr>
+                                <% } %>
                             <% }) %>
                         <% } else { %>
                             <tr>
@@ -320,6 +356,8 @@
                             </tr>
                         <% } %>
                     </tbody>
+                    
+                    
                     
                     
                     

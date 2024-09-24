@@ -228,16 +228,37 @@ router.get('/dashboard2/:fileId', async (req, res) => {
                     const result = await callMouserAPI(partDetail.partNumber);
                     const mouserStockRaw = result?.SearchResults?.Parts[0]?.Availability || 'N/A';
                     const mouserStock = parseInt(mouserStockRaw.replace(' In Stock', ''), 10);
-                    const mouserPrice = result?.SearchResults?.Parts[0]?.PriceBreaks?.[0]?.Price || 'N/A';
+                    const priceBreaks = result?.SearchResults?.Parts[0]?.PriceBreaks || [];
+            
+                    // Doğru fiyatı seçmek için quantity değerine göre PriceBreaks'i kontrol edelim
+                    let mouserPrice = 'N/A';
+                    const quantity = partDetail.quantity || 1;  // Varsayılan olarak 1 adet
+            
+                    if (priceBreaks.length > 0) {
+                        // Fiyat aralıklarını quantity'ye göre seç
+                        for (let i = 0; i < priceBreaks.length; i++) {
+                            if (quantity >= priceBreaks[i].Quantity) {
+                                mouserPrice = priceBreaks[i].Price.replace('$', '');  // Dolar işaretini kaldır
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+            
                     const mouserLeadTimeDays = parseInt(result?.SearchResults?.Parts[0]?.LeadTime || 0);
-
+            
+                    // Toplam fiyat hesaplaması
+                    const totalPrice = (parseFloat(mouserPrice) * quantity).toFixed(2);
+                    console.log(`Mouser Birim Fiyat: ${mouserPrice}, Adet: ${quantity}, Toplam Fiyat: ${totalPrice}`);
+                    console.log(`Mouser PriceBreaks:`, priceBreaks);
+            
                     return {
                         partNumber: partDetail.partNumber,
                         manufacturer: result?.SearchResults?.Parts[0]?.Manufacturer || 'N/A',
                         unitPrice: mouserPrice,
                         stock: mouserStock,
-                        totalPrice: (mouserPrice * partDetail.quantity).toFixed(2) || 'N/A',
-                        quantity: partDetail.quantity || 'Bilinmiyor',
+                        totalPrice: !isNaN(totalPrice) ? totalPrice : 'N/A',
+                        quantity: quantity,
                         leadTime: mouserLeadTimeDays,
                         supplier: 'Mouser'
                     };
@@ -255,56 +276,69 @@ router.get('/dashboard2/:fileId', async (req, res) => {
                     };
                 }
             }));
+            
+            // DigiKey ve Mouser sonuçlarını karşılaştırıyoruz
+            const combinedResults = partDetailsFromExcel.map((partDetail, index) => {
+                const digikey = digikeyResults[index];
+                const mouser = mouserResults[index];
 
-           // DigiKey ve Mouser sonuçlarını karşılaştırıyoruz
-const combinedResults = partDetailsFromExcel.map((partDetail, index) => {
-    const digikey = digikeyResults[index];
-    const mouser = mouserResults[index];
+                // Lead time ve fiyat karşılaştırması
+                let recommendedSupplier = null;
+                let selectedResult = null;
 
-    // Lead time ve fiyat karşılaştırması
-    let recommendedSupplier = null;
-    let selectedResult = null;
+                // Hem DigiKey hem de Mouser'dan lead time veya fiyat bilgisi alınamıyorsa
+                if ((digikey.leadTime !== 'N/A' || mouser.leadTime !== 'N/A') &&
+                    (digikey.unitPrice !== 'N/A' || mouser.unitPrice !== 'N/A')) {
 
-    // Hem DigiKey hem de Mouser'dan lead time veya fiyat bilgisi alınamıyorsa, bu ürünü işlemeyeceğiz
-    if ((digikey.leadTime !== 'N/A' || mouser.leadTime !== 'N/A') &&
-        (digikey.unitPrice !== 'N/A' || mouser.unitPrice !== 'N/A')) {
+                    // Lead time eşit ise fiyat karşılaştırması
+                    if (digikey.leadTime !== 'N/A' && mouser.leadTime !== 'N/A') {
+                        if (digikey.leadTime === mouser.leadTime) {
+                            if (parseFloat(mouser.unitPrice) < parseFloat(digikey.unitPrice)) {
+                                recommendedSupplier = 'Mouser';
+                                selectedResult = mouser;
+                            } else {
+                                recommendedSupplier = 'DigiKey';
+                                selectedResult = digikey;
+                            }
+                        } else if (mouser.leadTime < digikey.leadTime) {
+                            recommendedSupplier = 'Mouser';
+                            selectedResult = mouser;
+                        } else {
+                            recommendedSupplier = 'DigiKey';
+                            selectedResult = digikey;
+                        }
+                    } else if (mouser.leadTime !== 'N/A') {
+                        recommendedSupplier = 'Mouser';
+                        selectedResult = mouser;
+                    } else if (digikey.leadTime !== 'N/A') {
+                        recommendedSupplier = 'DigiKey';
+                        selectedResult = digikey;
+                    }
 
-        if (digikey.leadTime !== 'N/A' && mouser.leadTime !== 'N/A') {
-            // Lead time ve fiyat karşılaştırması
-            if (digikey.leadTime === mouser.leadTime) {
-                // Lead time eşitse fiyatı düşük olanı seç
-                if (parseFloat(mouser.unitPrice) < parseFloat(digikey.unitPrice)) {
-                    recommendedSupplier = 'Mouser';
-                    selectedResult = mouser;
+                    // Toplam fiyat her iki tedarikçi için hesaplanıyor
+                    if (mouser.unitPrice !== 'N/A') {
+                        mouser.totalPrice = (parseFloat(mouser.unitPrice) * partDetail.quantity).toFixed(2);
+                    }
+                    if (digikey.unitPrice !== 'N/A') {
+                        digikey.totalPrice = (parseFloat(digikey.unitPrice) * partDetail.quantity).toFixed(2);
+                    }
+
                 } else {
-                    recommendedSupplier = 'DigiKey';
-                    selectedResult = digikey;
+                    // Hem DigiKey hem de Mouser bilgisi yoksa
+                    recommendedSupplier = null;
+                    selectedResult = null;
                 }
-            } else if (mouser.leadTime < digikey.leadTime) {
-                recommendedSupplier = 'Mouser';
-                selectedResult = mouser;
-            } else {
-                recommendedSupplier = 'DigiKey';
-                selectedResult = digikey;
-            }
-        } else if (mouser.leadTime !== 'N/A') {
-            recommendedSupplier = 'Mouser';
-            selectedResult = mouser;
-        } else if (digikey.leadTime !== 'N/A') {
-            recommendedSupplier = 'DigiKey';
-            selectedResult = digikey;
-        }
-    }
 
-    return {
-        digikey,
-        mouser,
-        recommendedSupplier,
-        selectedResult,
-        partNumber: partDetail.partNumber // Parça numarası kırmızı liste için kullanılıyor
-    };
-});
-         // Part numarası detaylarını tabloya yansıtıyoruz
+                return {
+                    digikey,
+                    mouser,
+                    recommendedSupplier,
+                    selectedResult,
+                    partNumber: partDetail.partNumber
+                };
+            });
+
+            // Part numarası detaylarını tabloya yansıtıyoruz
             res.render('dashboard2', {
                 email: req.session.user.email,
                 bomFiles: bomFiles,
