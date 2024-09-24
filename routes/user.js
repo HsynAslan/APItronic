@@ -168,66 +168,153 @@ router.get('/get-part-details/:fileId', async (req, res) => {
 });
 
 
+// router.get('/dashboard2/:fileId')
 router.get('/dashboard2/:fileId', async (req, res) => {
     const { fileId } = req.params;
     const userId = req.session.user.id;
 
-    // Kullanıcının BOM dosyalarını çekiyoruz
     db.query('SELECT id, file_name FROM bom_files WHERE user_id = ?', [userId], async (err, bomFiles) => {
         if (err) {
             console.error(err);
             return res.send('Bir hata oluştu.');
         }
 
-        // Seçilen BOM dosyasını veritabanından alıyoruz
         db.query('SELECT file_content FROM bom_files WHERE id = ?', [fileId], async (err, results) => {
             if (err || results.length === 0) {
                 console.error('Dosya bulunamadı.');
                 return res.status(404).send('Dosya bulunamadı.');
             }
 
-            const fileBuffer = Buffer.from(results[0].file_content); // BOM dosyasını alıyoruz
-            const excelData = loadExcel(fileBuffer); // Excel dosyasını JSON formatına çeviriyoruz
-            const partDetailsFromExcel = filterPartNumbersAndQuantities(excelData); // Part numaralarını ve adetleri alıyoruz
+            const fileBuffer = Buffer.from(results[0].file_content);
+            const excelData = loadExcel(fileBuffer);
+            const partDetailsFromExcel = filterPartNumbersAndQuantities(excelData);
 
-            const token = await getToken(); // API için token alınıyor
+            const token = await getToken();
 
             // DigiKey API sorgusu
             const digikeyResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
                 try {
-                    const result = await callDigiKeyAPI(partDetail.partNumber, token); // DigiKey API çağrısı
+                    const result = await callDigiKeyAPI(partDetail.partNumber, token);
+                    const digikeyLeadTimeDays = parseInt(result?.Product?.ManufacturerLeadWeeks || 0) * 7;
+
                     return {
                         partNumber: partDetail.partNumber,
-                        manufacturer: result?.Product?.Manufacturer?.Value || 'N/A',
+                        manufacturer: result?.Product?.Manufacturer?.Name || 'N/A',
                         unitPrice: result?.Product?.UnitPrice || 'N/A',
                         stock: result?.Product?.QuantityAvailable || 'N/A',
                         totalPrice: (result?.Product?.UnitPrice * partDetail.quantity).toFixed(2) || 'N/A',
-                        quantity: partDetail.quantity || 'Bilinmiyor',  // Quantity (Adet)
-                        recommendedSupplier: 'DigiKey'
+                        quantity: partDetail.quantity || 'Bilinmiyor',
+                        leadTime: digikeyLeadTimeDays,
+                        supplier: 'DigiKey'
                     };
                 } catch (error) {
+                    console.error(`DigiKey API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
                     return {
                         partNumber: partDetail.partNumber,
                         manufacturer: 'N/A',
                         unitPrice: 'N/A',
                         stock: 'N/A',
                         totalPrice: 'N/A',
-                        quantity: partDetail.quantity || 'Bilinmiyor', // Hata durumunda da quantity bilgisi ekleniyor
-                        recommendedSupplier: 'DigiKey'
+                        quantity: partDetail.quantity || 'Bilinmiyor',
+                        leadTime: 'N/A',
+                        supplier: 'DigiKey'
                     };
                 }
             }));
 
-            // Part numarası detaylarını tabloya yansıtıyoruz
+            // Mouser API sorgusu
+            const mouserResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
+                try {
+                    const result = await callMouserAPI(partDetail.partNumber);
+                    const mouserStockRaw = result?.SearchResults?.Parts[0]?.Availability || 'N/A';
+                    const mouserStock = parseInt(mouserStockRaw.replace(' In Stock', ''), 10);
+                    const mouserPrice = result?.SearchResults?.Parts[0]?.PriceBreaks?.[0]?.Price || 'N/A';
+                    const mouserLeadTimeDays = parseInt(result?.SearchResults?.Parts[0]?.LeadTime || 0);
+
+                    return {
+                        partNumber: partDetail.partNumber,
+                        manufacturer: result?.SearchResults?.Parts[0]?.Manufacturer || 'N/A',
+                        unitPrice: mouserPrice,
+                        stock: mouserStock,
+                        totalPrice: (mouserPrice * partDetail.quantity).toFixed(2) || 'N/A',
+                        quantity: partDetail.quantity || 'Bilinmiyor',
+                        leadTime: mouserLeadTimeDays,
+                        supplier: 'Mouser'
+                    };
+                } catch (error) {
+                    console.error(`Mouser API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
+                    return {
+                        partNumber: partDetail.partNumber,
+                        manufacturer: 'N/A',
+                        unitPrice: 'N/A',
+                        stock: 'N/A',
+                        totalPrice: 'N/A',
+                        quantity: partDetail.quantity || 'Bilinmiyor',
+                        leadTime: 'N/A',
+                        supplier: 'Mouser'
+                    };
+                }
+            }));
+
+           // DigiKey ve Mouser sonuçlarını karşılaştırıyoruz
+const combinedResults = partDetailsFromExcel.map((partDetail, index) => {
+    const digikey = digikeyResults[index];
+    const mouser = mouserResults[index];
+
+    // Lead time ve fiyat karşılaştırması
+    let recommendedSupplier = null;
+    let selectedResult = null;
+
+    // Hem DigiKey hem de Mouser'dan lead time veya fiyat bilgisi alınamıyorsa, bu ürünü işlemeyeceğiz
+    if ((digikey.leadTime !== 'N/A' || mouser.leadTime !== 'N/A') &&
+        (digikey.unitPrice !== 'N/A' || mouser.unitPrice !== 'N/A')) {
+
+        if (digikey.leadTime !== 'N/A' && mouser.leadTime !== 'N/A') {
+            // Lead time ve fiyat karşılaştırması
+            if (digikey.leadTime === mouser.leadTime) {
+                // Lead time eşitse fiyatı düşük olanı seç
+                if (parseFloat(mouser.unitPrice) < parseFloat(digikey.unitPrice)) {
+                    recommendedSupplier = 'Mouser';
+                    selectedResult = mouser;
+                } else {
+                    recommendedSupplier = 'DigiKey';
+                    selectedResult = digikey;
+                }
+            } else if (mouser.leadTime < digikey.leadTime) {
+                recommendedSupplier = 'Mouser';
+                selectedResult = mouser;
+            } else {
+                recommendedSupplier = 'DigiKey';
+                selectedResult = digikey;
+            }
+        } else if (mouser.leadTime !== 'N/A') {
+            recommendedSupplier = 'Mouser';
+            selectedResult = mouser;
+        } else if (digikey.leadTime !== 'N/A') {
+            recommendedSupplier = 'DigiKey';
+            selectedResult = digikey;
+        }
+    }
+
+    return {
+        digikey,
+        mouser,
+        recommendedSupplier,
+        selectedResult,
+        partNumber: partDetail.partNumber // Parça numarası kırmızı liste için kullanılıyor
+    };
+});
+         // Part numarası detaylarını tabloya yansıtıyoruz
             res.render('dashboard2', {
                 email: req.session.user.email,
-                bomFiles: bomFiles,  // Select için BOM dosyaları
-                bomDetails: digikeyResults,  // Part numarası detayları
-                selectedFileId: fileId       // Seçilen BOM dosyasını işaretliyoruz
+                bomFiles: bomFiles,
+                bomDetails: combinedResults,
+                selectedFileId: fileId
             });
         });
     });
 });
+
 
 
 router.get('/dashboard2', (req, res) => {
