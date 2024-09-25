@@ -54,7 +54,7 @@
 
         #select-container {
     display: flex;
-    width: 100%;
+    width: 88%;
     /* text-align: center; */
     margin-bottom: 20px;
     flex-direction: row;
@@ -64,7 +64,7 @@
 }
 
         #select-container select {
-            width: 60%;
+            width: 100%;
             padding: 10px;
             font-size: 1.2rem;
         }
@@ -161,16 +161,16 @@
     z-index: 2;
     text-align: left;
     padding: 10px;
-    border-bottom: 2px solid #ddd;
+    /* border-bottom: 2px solid #ddd; */
     font-weight: bold;
 }
 
 /* Satır düzeni */
 #part-details-table tbody td {
     
-    background-color: #fffffd;
+    /* background-color: #fffffd; */
     padding: 10px;
-    border-bottom: 1px solid #ddd;
+    /* border-bottom: 1px solid #ddd; */
     text-align: left;
 }
 
@@ -209,7 +209,7 @@
     margin: 5px 0;
 }
 .rightBigDiv{
-    padding: 5vh;
+    padding-top: 5vh;
 }
 .uContent{
     height: 80%;
@@ -221,6 +221,122 @@
 }
 thead.theadClass tr {
     border-bottom: 5px solid transparent; /* Altta 5px boşluk görünümü için */
+}
+
+.icon-cell  {
+    background-color:#5ce2e7 !important; /* Arka planı şeffaf yapar */
+    
+}
+tr.productRow{
+    background-color: #fffffd;
+}
+tr.productRow:hover {
+    background-color: #c7baba; /* Hover sırasında arka plan rengi */
+    cursor: pointer; /* İmleci işaretçi şeklinde değiştir */
+}
+
+.openDiv {
+    background-color: aliceblue; /* Arka plan rengi */
+    
+}
+/* formTotal için CSS */
+.formTotal {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0px 2vh;
+    background-color: #f4f4f4; /* Hafif bir arka plan rengi */
+    border-radius: 8px; /* Hafif köşe yuvarlama */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Hafif gölge */
+    margin: 10px 5vh; /* Üst ve alt boşluk */
+}
+
+/* Label ve input stil düzenlemeleri */
+.formTotal label {
+    font-size: 1.2rem;
+    margin-right: 10px;
+    color: #333; /* Koyu gri yazı rengi */
+}
+
+.formTotal input[type="number"] {
+    padding: 10px;
+    font-size: 1.2rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100px;
+}
+
+/* Toplam fiyat için stil */
+.formTotal p {
+    font-size: 1.2rem;
+    color: #333;
+    margin-left: 20px;
+}
+
+
+
+#bom-count-container{
+    width: 50%;
+}
+#bom-form{
+width: 25% !important;
+}
+.mailButtons{
+    width: 20%;
+}
+.navbarButtons {
+    background-color: #4CAF50; /* Butonun arka plan rengi */
+    border: none; /* Kenarlık yok */
+    color: white; /* Yazı rengi beyaz */
+    padding: 6px 14px; /* Butonun iç boşlukları */
+    text-align: center; /* Yazıyı ortala */
+    text-decoration: none; /* Alt çizgi yok */
+    display: inline-block; /* Butonu satır içi blok eleman yap */
+    font-size: 13px; /* Yazı boyutu */
+    font-weight: bold; /* Yazı kalınlığı */
+    border-radius: 5px; /* Hafif yuvarlak köşeler */
+    transition: background-color 0.3s ease, box-shadow 0.3s ease; /* Hover geçiş animasyonu */
+    cursor: pointer; /* Butona işaretçi imleci ekle */
+}
+
+.navbarButtons:hover {
+    background-color: #45a049; /* Hover durumunda arka plan rengi */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Hover durumunda hafif gölge */
+}
+
+.navbarButtons:active {
+    background-color: #3e8e41; /* Tıklama durumunda arka plan rengi */
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2); /* Tıklama durumunda gölge */
+    transform: translateY(2px); /* Tıklama sırasında buton hafif aşağı iner */
+}
+
+
+#unavailable-products {
+    background-color: #ffe6e6;
+    border: 2px solid red;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+#unavailable-products ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+#unavailable-products li {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+.missing-product-row{
+    background-color: #ffefef; /* Hafif kırmızı arka plan */
+    color: #d9534f; /* Koyu kırmızı yazı */
+    font-weight: bold; /* Kalın yazı */
+}
+.missing-product-row td {
+    border-bottom: 2px solid #d9534f; /* Kırmızı alt çizgi */
+    padding: 10px;
 }
     </style>
 </head>
@@ -252,7 +368,7 @@ thead.theadClass tr {
          <div class="rightBigDiv">
            <!-- Select Option Alanı -->
            <div id="select-container">
-            <form id="bom-form" action="/dashboard2" method="GET">
+            <form id="bom-form" action="/dashboard2" method="GET" sty>
                 <select name="fileId" id="bom-selector" onchange="this.form.submit()">
                     <option value="">Bir BOM dosyası seçin</option>
                     <% bomFiles.forEach(function(bom) { %>
@@ -263,6 +379,37 @@ thead.theadClass tr {
                 </select>
                 
             </form>
+
+
+            <% if (selectedFileId) { %>
+            <div id="bom-count-container" >
+                <form id="bom-count-form" action="/saveBomCount" method="POST" class="formTotal">
+                    <!-- BOM ID'sini gizli bir inputla POST ediyoruz -->
+                   
+                
+                    <!-- BOM Adedi Girişi -->
+                    <div>
+                        <label for="bomCount">BOM Adedi:</label>
+                        <input type="number" id="bomCount" name="bomCount" min="1" value="<%= bomCount || 1 %>" required>
+                    </div>
+                
+                    <!-- Toplam Fiyat Bilgisi -->
+                    <p>Toplam Fiyat: $<%= totalPrice %></p>
+                    
+                    <input type="hidden" name="totalPrice" value="<%= totalPrice %>">
+                    <input type="hidden" name="fileId" value="<%= selectedFileId %>"> <!-- BOM dosyasının ID'si -->
+                    <!-- Güncelle Butonu -->
+                    <button type="submit" class="navbarButtons">Güncelle</button>
+                </form>
+                
+            </div>
+            <div class="mailButtons">
+                <button class="navbarButtons">Mail Gönder</button>
+                <button class="navbarButtons">Bilgisayara Kaydet</button>
+            </div>
+
+
+            <% } %>
         </div>
 
         <div class="uContent">
@@ -283,26 +430,40 @@ thead.theadClass tr {
                             <th>Birim Fiyat</th>
                             <th>Toplam</th>
                             <th>Önerilen Tedarikçi</th>
+                            <th>Detaylar</th>
                         </tr>
                     </thead>
                     <tbody id="part-details-body">
                         <% if (bomDetails && bomDetails.length > 0) { %>
                             <% bomDetails.forEach(function(detail, index) { %>
-                                <% if (detail.recommendedSupplier) { %>
+                
+                                <% 
+                                // Üretim dışı kontrolü DigiKey ve Mouser'da yapılır
+                                const isDiscontinued = detail.digikey?.isDiscontinued || detail.mouser?.isDiscontinued;
+                                %>
+                
+                                <% if (isDiscontinued) { %>
+                                    <!-- Üretim dışı ürünler kırmızı renkte -->
+                                    <tr style="background-color: #ffcccc;">
+                                        <td><%= detail.partNumber %> - Üretim Dışı</td>
+                                        <td colspan="7">Bu ürün artık üretimde değil.</td>
+                                    </tr>
+                                <% } else if (detail.recommendedSupplier) { %>
                                     <!-- Ana satır -->
                                     <tr class="productRow" data-index="<%= index %>" data-part-number="<%= detail.selectedResult.partNumber %>">
                                         <td><%= detail.selectedResult.partNumber %></td>
                                         <td><%= detail.selectedResult.manufacturer || 'Bilinmiyor' %></td>
                                         <td><%= detail.selectedResult.quantity || 'Bilinmiyor' %></td>
                                         <td><%= detail.selectedResult.stock || 'N/A' %></td>
-                                        <td><%= detail.selectedResult.unitPrice || 'N/A' %></td>
+                                        <td>$<%= detail.selectedResult.unitPrice || 'N/A' %></td>
                                         <td>$<%= detail.selectedResult.totalPrice || 'N/A' %></td>
                                         <td><%= detail.recommendedSupplier || 'N/A' %></td>
+                                        <td class="icon-cell"><i class="fa-solid fa-angle-left"></i></td> <!-- İkon hücresi -->
                                     </tr>
-                        
+                
                                     <!-- Details satırı -->
                                     <tr id="details-<%= detail.selectedResult.partNumber %>" style="display: none;">
-                                        <td colspan="7">
+                                        <td colspan="8">
                                             <div class="details-content" id="detail-container-<%= detail.selectedResult.partNumber %>">
                                                 <!-- DigiKey Bilgileri -->
                                                 <div class="api-column">
@@ -314,8 +475,11 @@ thead.theadClass tr {
                                                     <p>Toplam Fiyat: $<%= detail.digikey.totalPrice %></p>
                                                     <p>Lead Time: <%= detail.digikey.leadTime %> gün</p>
                                                     <p>Tedarikçi: DigiKey</p>
+                                                    <% if (detail.digikey.isDiscontinued) { %>
+                                                        <p style="color: red;">Bu ürün DigiKey'de üretim dışıdır.</p>
+                                                    <% } %>
                                                 </div>
-                        
+                
                                                 <!-- Mouser Bilgileri -->
                                                 <div class="api-column">
                                                     <img src="/images/mouser.jpg" alt="Mouser" class="api-logo">
@@ -326,8 +490,11 @@ thead.theadClass tr {
                                                     <p>Toplam Fiyat: $<%= detail.mouser.totalPrice %></p>
                                                     <p>Lead Time: <%= detail.mouser.leadTime %> gün</p>
                                                     <p>Tedarikçi: Mouser</p>
+                                                    <% if (detail.mouser.isDiscontinued) { %>
+                                                        <p style="color: red;">Bu ürün Mouser'da üretim dışıdır.</p>
+                                                    <% } %>
                                                 </div>
-                    
+                
                                                 <!-- Avnet Bilgileri -->
                                                 <div class="api-column">
                                                     <img src="/images/Avnet.png" alt="Avnet" class="api-logo">
@@ -339,7 +506,7 @@ thead.theadClass tr {
                                                     <p>Lead Time: <%= detail.avnet?.leadTime || 'N/A' %> gün</p>
                                                     <p>Tedarikçi: Avnet</p>
                                                 </div>
-                    
+                
                                                 <!-- Future Bilgileri -->
                                                 <div class="api-column">
                                                     <img src="/images/future.jpeg" alt="Future" class="api-logo">
@@ -351,7 +518,7 @@ thead.theadClass tr {
                                                     <p>Lead Time: <%= detail.future?.leadTime || 'N/A' %> gün</p>
                                                     <p>Tedarikçi: Future</p>
                                                 </div>
-                    
+                
                                                 <!-- Utmel Bilgileri -->
                                                 <div class="api-column">
                                                     <img src="/images/utmel.png" alt="Utmel" class="api-logo">
@@ -363,53 +530,38 @@ thead.theadClass tr {
                                                     <p>Lead Time: <%= detail.utmel?.leadTime || 'N/A' %> gün</p>
                                                     <p>Tedarikçi: Utmel</p>
                                                 </div>
-                    
-                                                
                                             </div>
                                         </td>
                                     </tr>
-                                <% } else { %>
-                                    <!-- Ürün bulunamayan satırları tamamen gizle -->
-                                    <tr style="display: none;"></tr>
+                                <% } else if (!detail.recommendedSupplier && !isDiscontinued) { %>
+                                    <!-- Bilgi alınamayan ürünleri uygun şekilde listele -->
+                                    <tr class="missing-product-row">
+                                        <td colspan="8"><%= detail.partNumber %> - Bilgi Alınamayan Ürün</td>
+                                    </tr>
                                 <% } %>
                             <% }) %>
                         <% } else { %>
                             <tr>
-                                <td colspan="7">Bu dosya için veri bulunamadı.</td>
+                                <td colspan="8">Bu dosya için veri bulunamadı.</td>
                             </tr>
                         <% } %>
                     </tbody>
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                        
-                    
-                    
-                    
-                    
-                    
                 </table>
+                
             </div>
+            
+            
+            
         </div>
+
+       
 
     </div>
     </div>
     </div>
-    <!-- Bilgi alınamayan ürünler için kırmızı liste -->
-<div id="unavailable-products" style="color: red;">
-    <h3>Bilgi alınamayan ürünler:</h3>
-    <ul>
-        <% bomDetails.forEach(function(detail) { %>
-            <% if (!detail.recommendedSupplier) { %>
-                <li><%= detail.partNumber %></li>
-            <% } %>
-        <% }) %>
-    </ul>
-</div>
+
+
+
 </body>
 
 <script>
@@ -421,20 +573,46 @@ document.addEventListener('DOMContentLoaded', function () {
         row.addEventListener('click', function () {
             const partNumber = row.getAttribute('data-part-number');
             const detailsRow = document.getElementById(`details-${partNumber}`);
+            const iconCell = row.querySelector('.icon-cell i'); // İkonu bul
 
-            // Diğer açık satır varsa kapat
+            // Diğer açık satır varsa kapat ve openDiv sınıfını kaldır
             if (openPartNumber !== null && openPartNumber !== partNumber) {
                 const openRow = document.getElementById(`details-${openPartNumber}`);
-                if (openRow) openRow.style.display = 'none';
+                const openIcon = document.querySelector(`[data-part-number="${openPartNumber}"] .icon-cell i`); // Açık olan satırın ikonunu bul
+
+                if (openRow) {
+                    openRow.style.display = 'none';
+                    openRow.classList.remove('openDiv'); // openDiv sınıfını kaldır
+
+                    // Açık olan satırın ikonunu geri sola ok yap
+                    if (openIcon) {
+                        openIcon.classList.remove('fa-angle-down');
+                        openIcon.classList.add('fa-angle-left');
+                    }
+                }
             }
 
-            // Eğer tıklanan satır açıksa kapat, değilse aç
+            // Eğer tıklanan satır açıksa kapat ve openDiv sınıfını kaldır, değilse aç ve openDiv sınıfını ekle
             if (detailsRow.style.display === 'none' || detailsRow.style.display === '') {
                 detailsRow.style.display = 'table-row';
+                detailsRow.classList.add('openDiv'); // openDiv sınıfını ekle
                 openPartNumber = partNumber;
+
+                // İkonu aşağı ok yap
+                if (iconCell) {
+                    iconCell.classList.remove('fa-angle-left');
+                    iconCell.classList.add('fa-angle-down');
+                }
             } else {
                 detailsRow.style.display = 'none';
+                detailsRow.classList.remove('openDiv'); // openDiv sınıfını kaldır
                 openPartNumber = null;
+
+                // İkonu tekrar sola ok yap
+                if (iconCell) {
+                    iconCell.classList.remove('fa-angle-down');
+                    iconCell.classList.add('fa-angle-left');
+                }
             }
 
             // Tıklanan part numarasını loglayalım
@@ -624,5 +802,5 @@ function populatePartDetails(data) {
 
 </script>
 
-
+<script src="https://kit.fontawesome.com/d497048b92.js" crossorigin="anonymous"></script>
 </html>

@@ -167,18 +167,50 @@ router.get('/get-part-details/:fileId', async (req, res) => {
     });
 });
 
+// POST isteği ile bom_count ve total_price güncelleme
+router.post('/saveBomCount', (req, res) => {
+    const { bomCount, totalPrice, fileId } = req.body; // formdan gelen değerler
+    console.log("bomCount: "+bomCount);
+    console.log("totalPrice: "+totalPrice);
+    console.log("fileId: "+fileId);
+    // Veritabanında bom_count ve total_price güncelleniyor
+    db.query(
+        'UPDATE bom_files SET bom_count = ?, total_price = ? WHERE id = ?', // Tek id parametresi kullanıyoruz
+        [bomCount, totalPrice, fileId], // Üç değer sırayla sorguya ekleniyor
+        (err, result) => {
+            if (err) {
+                console.error('BOM dosyası güncellenirken hata oluştu:', err);
+                return res.status(500).send('Veritabanı hatası.');
+            }
+
+            // Güncelleme başarılı olduğunda dashboard2 sayfasına yönlendir
+            res.redirect(`/dashboard2/${fileId}`);
+        }
+    );
+});
+
 
 // router.get('/dashboard2/:fileId')
 router.get('/dashboard2/:fileId', async (req, res) => {
     const { fileId } = req.params;
     const userId = req.session.user.id;
 
-    db.query('SELECT id, file_name FROM bom_files WHERE user_id = ?', [userId], async (err, bomFiles) => {
+    // Kullanıcının tüm BOM dosyalarını al
+    db.query('SELECT id, file_name, bom_count FROM bom_files WHERE user_id = ?', [userId], async (err, bomFiles) => {
         if (err) {
             console.error(err);
             return res.send('Bir hata oluştu.');
         }
 
+        if (bomFiles.length === 0) {
+            return res.status(404).send('BOM dosyası bulunamadı.');
+        }
+
+        // Seçili dosyanın bom_count bilgisini al
+        const selectedBom = bomFiles.find(bom => bom.id == fileId);
+        const bomCount = selectedBom ? selectedBom.bom_count : 1; // Eğer bom_count veritabanında yoksa 1 olarak al
+
+        // BOM dosyasını al ve işle
         db.query('SELECT file_content FROM bom_files WHERE id = ?', [fileId], async (err, results) => {
             if (err || results.length === 0) {
                 console.error('Dosya bulunamadı.');
@@ -190,107 +222,112 @@ router.get('/dashboard2/:fileId', async (req, res) => {
             const partDetailsFromExcel = filterPartNumbersAndQuantities(excelData);
 
             const token = await getToken();
+            
+         // DigiKey API sorgusu
+const digikeyResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
+    try {
+        const result = await callDigiKeyAPI(partDetail.partNumber, token);
+        const digikeyLeadTimeDays = parseInt(result?.Product?.ManufacturerLeadWeeks || 0) * 7;
 
-            // DigiKey API sorgusu
-            const digikeyResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
-                try {
-                    const result = await callDigiKeyAPI(partDetail.partNumber, token);
-                    const digikeyLeadTimeDays = parseInt(result?.Product?.ManufacturerLeadWeeks || 0) * 7;
+        if (!result || !result.Product) {
+            throw new Error('DigiKey verisi bulunamadı');
+        }
 
-                    return {
-                        partNumber: partDetail.partNumber,
-                        manufacturer: result?.Product?.Manufacturer?.Name || 'N/A',
-                        unitPrice: result?.Product?.UnitPrice || 'N/A',
-                        stock: result?.Product?.QuantityAvailable || 'N/A',
-                        totalPrice: (result?.Product?.UnitPrice * partDetail.quantity).toFixed(2) || 'N/A',
-                        quantity: partDetail.quantity || 'Bilinmiyor',
-                        leadTime: digikeyLeadTimeDays,
-                        supplier: 'DigiKey'
-                    };
-                } catch (error) {
-                    console.error(`DigiKey API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
-                    return {
-                        partNumber: partDetail.partNumber,
-                        manufacturer: 'N/A',
-                        unitPrice: 'N/A',
-                        stock: 'N/A',
-                        totalPrice: 'N/A',
-                        quantity: partDetail.quantity || 'Bilinmiyor',
-                        leadTime: 'N/A',
-                        supplier: 'DigiKey'
-                    };
+        return {
+            partNumber: partDetail.partNumber,
+            manufacturer: result?.Product?.Manufacturer?.Name || 'N/A',
+            unitPrice: result?.Product?.UnitPrice || 'N/A',
+            stock: result?.Product?.QuantityAvailable || 'N/A',
+            totalPrice: (result?.Product?.UnitPrice * partDetail.quantity).toFixed(2) || 'N/A',
+            quantity: partDetail.quantity || 'Bilinmiyor',
+            leadTime: digikeyLeadTimeDays,
+            supplier: 'DigiKey',
+            digikeyError: result?.Product ? null : 'DigiKey verisi bulunamadı'
+        };
+    } catch (error) {
+        console.error(`DigiKey API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
+        return {
+            partNumber: partDetail.partNumber,
+            manufacturer: 'N/A',
+            unitPrice: 'N/A',
+            stock: 'N/A',
+            totalPrice: 'N/A',
+            quantity: partDetail.quantity || 'Bilinmiyor',
+            leadTime: 'N/A',
+            supplier: 'DigiKey',
+            digikeyError: error.message || 'DigiKey API çağrısı sırasında bir hata oluştu'
+        };
+    }
+}));
+
+// Mouser API sorgusu
+const mouserResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
+    try {
+        const result = await callMouserAPI(partDetail.partNumber);
+        const mouserStockRaw = result?.SearchResults?.Parts[0]?.Availability || 'N/A';
+        const mouserStock = parseInt(mouserStockRaw.replace(' In Stock', ''), 10);
+        const priceBreaks = result?.SearchResults?.Parts[0]?.PriceBreaks || [];
+
+        if (!result || !result.SearchResults || !result.SearchResults.Parts || result.SearchResults.Parts.length === 0) {
+            throw new Error('Mouser verisi bulunamadı');
+        }
+
+        let mouserPrice = 'N/A';
+        const quantity = partDetail.quantity || 1;
+
+        if (priceBreaks.length > 0) {
+            for (let i = 0; i < priceBreaks.length; i++) {
+                if (quantity >= priceBreaks[i].Quantity) {
+                    mouserPrice = priceBreaks[i].Price.replace('$', '');
+                } else {
+                    break;
                 }
-            }));
+            }
+        }
 
-            // Mouser API sorgusu
-            const mouserResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
-                try {
-                    const result = await callMouserAPI(partDetail.partNumber);
-                    const mouserStockRaw = result?.SearchResults?.Parts[0]?.Availability || 'N/A';
-                    const mouserStock = parseInt(mouserStockRaw.replace(' In Stock', ''), 10);
-                    const priceBreaks = result?.SearchResults?.Parts[0]?.PriceBreaks || [];
-            
-                    // Doğru fiyatı seçmek için quantity değerine göre PriceBreaks'i kontrol edelim
-                    let mouserPrice = 'N/A';
-                    const quantity = partDetail.quantity || 1;  // Varsayılan olarak 1 adet
-            
-                    if (priceBreaks.length > 0) {
-                        // Fiyat aralıklarını quantity'ye göre seç
-                        for (let i = 0; i < priceBreaks.length; i++) {
-                            if (quantity >= priceBreaks[i].Quantity) {
-                                mouserPrice = priceBreaks[i].Price.replace('$', '');  // Dolar işaretini kaldır
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-            
-                    const mouserLeadTimeDays = parseInt(result?.SearchResults?.Parts[0]?.LeadTime || 0);
-            
-                    // Toplam fiyat hesaplaması
-                    const totalPrice = (parseFloat(mouserPrice) * quantity).toFixed(2);
-                    console.log(`Mouser Birim Fiyat: ${mouserPrice}, Adet: ${quantity}, Toplam Fiyat: ${totalPrice}`);
-                    console.log(`Mouser PriceBreaks:`, priceBreaks);
-            
-                    return {
-                        partNumber: partDetail.partNumber,
-                        manufacturer: result?.SearchResults?.Parts[0]?.Manufacturer || 'N/A',
-                        unitPrice: mouserPrice,
-                        stock: mouserStock,
-                        totalPrice: !isNaN(totalPrice) ? totalPrice : 'N/A',
-                        quantity: quantity,
-                        leadTime: mouserLeadTimeDays,
-                        supplier: 'Mouser'
-                    };
-                } catch (error) {
-                    console.error(`Mouser API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
-                    return {
-                        partNumber: partDetail.partNumber,
-                        manufacturer: 'N/A',
-                        unitPrice: 'N/A',
-                        stock: 'N/A',
-                        totalPrice: 'N/A',
-                        quantity: partDetail.quantity || 'Bilinmiyor',
-                        leadTime: 'N/A',
-                        supplier: 'Mouser'
-                    };
-                }
-            }));
-            
+        const mouserLeadTimeDays = parseInt(result?.SearchResults?.Parts[0]?.LeadTime || 0);
+        const totalPrice = (parseFloat(mouserPrice) * quantity).toFixed(2);
+
+        return {
+            partNumber: partDetail.partNumber,
+            manufacturer: result?.SearchResults?.Parts[0]?.Manufacturer || 'N/A',
+            unitPrice: mouserPrice,
+            stock: mouserStock,
+            totalPrice: !isNaN(totalPrice) ? totalPrice : 'N/A',
+            quantity: quantity,
+            leadTime: mouserLeadTimeDays,
+            supplier: 'Mouser',
+            mouserError: result?.SearchResults?.Parts[0] ? null : 'Mouser verisi bulunamadı'
+        };
+    } catch (error) {
+        console.error(`Mouser API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
+        return {
+            partNumber: partDetail.partNumber,
+            manufacturer: 'N/A',
+            unitPrice: 'N/A',
+            stock: 'N/A',
+            totalPrice: 'N/A',
+            quantity: partDetail.quantity || 'Bilinmiyor',
+            leadTime: 'N/A',
+            supplier: 'Mouser',
+            mouserError: error.message || 'Mouser API çağrısı sırasında bir hata oluştu'
+        };
+    }
+}));
+
+
             // DigiKey ve Mouser sonuçlarını karşılaştırıyoruz
             const combinedResults = partDetailsFromExcel.map((partDetail, index) => {
                 const digikey = digikeyResults[index];
                 const mouser = mouserResults[index];
 
-                // Lead time ve fiyat karşılaştırması
                 let recommendedSupplier = null;
                 let selectedResult = null;
-
-                // Hem DigiKey hem de Mouser'dan lead time veya fiyat bilgisi alınamıyorsa
+                let isDiscontinued = false;  // Üretim dışı kontrolü için
+                // Lead time ve fiyat karşılaştırması
                 if ((digikey.leadTime !== 'N/A' || mouser.leadTime !== 'N/A') &&
                     (digikey.unitPrice !== 'N/A' || mouser.unitPrice !== 'N/A')) {
 
-                    // Lead time eşit ise fiyat karşılaştırması
                     if (digikey.leadTime !== 'N/A' && mouser.leadTime !== 'N/A') {
                         if (digikey.leadTime === mouser.leadTime) {
                             if (parseFloat(mouser.unitPrice) < parseFloat(digikey.unitPrice)) {
@@ -315,7 +352,6 @@ router.get('/dashboard2/:fileId', async (req, res) => {
                         selectedResult = digikey;
                     }
 
-                    // Toplam fiyat her iki tedarikçi için hesaplanıyor
                     if (mouser.unitPrice !== 'N/A') {
                         mouser.totalPrice = (parseFloat(mouser.unitPrice) * partDetail.quantity).toFixed(2);
                     }
@@ -323,32 +359,39 @@ router.get('/dashboard2/:fileId', async (req, res) => {
                         digikey.totalPrice = (parseFloat(digikey.unitPrice) * partDetail.quantity).toFixed(2);
                     }
 
-                } else {
-                    // Hem DigiKey hem de Mouser bilgisi yoksa
-                    recommendedSupplier = null;
-                    selectedResult = null;
                 }
-
+ // Discontinued (Üretim dışı) kontrolü
+ if (digikey.isDiscontinued || mouser.isDiscontinued) {
+    isDiscontinued = true;
+}
                 return {
                     digikey,
                     mouser,
                     recommendedSupplier,
                     selectedResult,
-                    partNumber: partDetail.partNumber
+                    partNumber: partDetail.partNumber,
+                    isDiscontinued // Üretim dışı bilgisi eklendi
                 };
             });
 
-            // Part numarası detaylarını tabloya yansıtıyoruz
+            // Toplam fiyatı hesapla
+            const totalPrice = combinedResults.reduce((acc, result) => {
+                const price = result.selectedResult ? parseFloat(result.selectedResult.totalPrice) : 0;
+                return acc + price;
+            }, 0) * bomCount; // Eğer BOM adedi varsa ona göre çarp
+
+            // Part numarası detaylarını tabloya yansıt
             res.render('dashboard2', {
                 email: req.session.user.email,
-                bomFiles: bomFiles,
+                bomFiles: bomFiles, // Kullanıcının tüm BOM dosyaları
                 bomDetails: combinedResults,
-                selectedFileId: fileId
+                selectedFileId: fileId, // Seçili dosya
+                bomCount: bomCount, // BOM adedi
+                totalPrice: totalPrice.toFixed(2) // Toplam fiyatı 2 ondalık basamakla gönder
             });
         });
     });
 });
-
 
 
 router.get('/dashboard2', (req, res) => {
@@ -367,13 +410,16 @@ router.get('/dashboard2', (req, res) => {
                 email: req.session.user.email,
                 bomFiles: bomFiles,  // Select için BOM dosyaları
                 bomDetails: [],      // Boş tablo, part numarası detayları yok
-                selectedFileId: null // Seçili dosya yok
+                selectedFileId: null, // Seçili dosya yok
+                bomCount: 1,         // Varsayılan olarak BOM adedi 1
+                totalPrice: 0        // Toplam fiyat varsayılan olarak 0
             });
         });
     } else {
         res.redirect('/login');
     }
 });
+
 
 
 

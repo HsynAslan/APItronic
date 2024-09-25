@@ -7,7 +7,7 @@ async function callDigiKeyAPI(partNumber, token) {
         const response = await axios.get(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'X-DIGIKEY-Client-Id': 'J1Dh1xnCwwGApOiC93h3lQKUe97G8Bp2',
+                'X-DIGIKEY-Client-Id': 'lNhPGByVlazXNfWpOD8mYG4kGVkD1cLf',
 
                 'Accept': 'application/json'
             }
