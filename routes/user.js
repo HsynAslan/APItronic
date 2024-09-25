@@ -222,99 +222,87 @@ router.get('/dashboard2/:fileId', async (req, res) => {
             const partDetailsFromExcel = filterPartNumbersAndQuantities(excelData);
 
             const token = await getToken();
-            
-         // DigiKey API sorgusu
-const digikeyResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
-    try {
-        const result = await callDigiKeyAPI(partDetail.partNumber, token);
-        const digikeyLeadTimeDays = parseInt(result?.Product?.ManufacturerLeadWeeks || 0) * 7;
 
-        if (!result || !result.Product) {
-            throw new Error('DigiKey verisi bulunamadı');
-        }
+            // DigiKey API sorgusu
+            const digikeyResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
+                try {
+                    const result = await callDigiKeyAPI(partDetail.partNumber, token);
+                    const digikeyLeadTimeDays = parseInt(result?.Product?.ManufacturerLeadWeeks || 0) * 7;
 
-        return {
-            partNumber: partDetail.partNumber,
-            manufacturer: result?.Product?.Manufacturer?.Name || 'N/A',
-            unitPrice: result?.Product?.UnitPrice || 'N/A',
-            stock: result?.Product?.QuantityAvailable || 'N/A',
-            totalPrice: (result?.Product?.UnitPrice * partDetail.quantity).toFixed(2) || 'N/A',
-            quantity: partDetail.quantity || 'Bilinmiyor',
-            leadTime: digikeyLeadTimeDays,
-            supplier: 'DigiKey',
-            digikeyError: result?.Product ? null : 'DigiKey verisi bulunamadı'
-        };
-    } catch (error) {
-        console.error(`DigiKey API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
-        return {
-            partNumber: partDetail.partNumber,
-            manufacturer: 'N/A',
-            unitPrice: 'N/A',
-            stock: 'N/A',
-            totalPrice: 'N/A',
-            quantity: partDetail.quantity || 'Bilinmiyor',
-            leadTime: 'N/A',
-            supplier: 'DigiKey',
-            digikeyError: error.message || 'DigiKey API çağrısı sırasında bir hata oluştu'
-        };
-    }
-}));
-
-// Mouser API sorgusu
-const mouserResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
-    try {
-        const result = await callMouserAPI(partDetail.partNumber);
-        const mouserStockRaw = result?.SearchResults?.Parts[0]?.Availability || 'N/A';
-        const mouserStock = parseInt(mouserStockRaw.replace(' In Stock', ''), 10);
-        const priceBreaks = result?.SearchResults?.Parts[0]?.PriceBreaks || [];
-
-        if (!result || !result.SearchResults || !result.SearchResults.Parts || result.SearchResults.Parts.length === 0) {
-            throw new Error('Mouser verisi bulunamadı');
-        }
-
-        let mouserPrice = 'N/A';
-        const quantity = partDetail.quantity || 1;
-
-        if (priceBreaks.length > 0) {
-            for (let i = 0; i < priceBreaks.length; i++) {
-                if (quantity >= priceBreaks[i].Quantity) {
-                    mouserPrice = priceBreaks[i].Price.replace('$', '');
-                } else {
-                    break;
+                    return {
+                        partNumber: partDetail.partNumber,
+                        manufacturer: result?.Product?.Manufacturer?.Name || 'N/A',
+                        unitPrice: result?.Product?.UnitPrice || 'N/A',
+                        stock: result?.Product?.QuantityAvailable || 'N/A',
+                        totalPrice: (result?.Product?.UnitPrice * partDetail.quantity).toFixed(2) || 'N/A',
+                        quantity: partDetail.quantity || 'Bilinmiyor',
+                        leadTime: digikeyLeadTimeDays,
+                        supplier: 'DigiKey'
+                    };
+                } catch (error) {
+                    console.error(`DigiKey API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
+                    return {
+                        partNumber: partDetail.partNumber,
+                        manufacturer: 'N/A',
+                        unitPrice: 'N/A',
+                        stock: 'N/A',
+                        totalPrice: 'N/A',
+                        quantity: partDetail.quantity || 'Bilinmiyor',
+                        leadTime: 'N/A',
+                        supplier: 'DigiKey'
+                    };
                 }
-            }
-        }
+            }));
 
-        const mouserLeadTimeDays = parseInt(result?.SearchResults?.Parts[0]?.LeadTime || 0);
-        const totalPrice = (parseFloat(mouserPrice) * quantity).toFixed(2);
+            // Mouser API sorgusu
+            const mouserResults = await Promise.all(partDetailsFromExcel.map(async (partDetail) => {
+                try {
+                    const result = await callMouserAPI(partDetail.partNumber);
+                    const mouserStockRaw = result?.SearchResults?.Parts[0]?.Availability || 'N/A';
+                    const mouserStock = parseInt(mouserStockRaw.replace(' In Stock', ''), 10);
+                    const priceBreaks = result?.SearchResults?.Parts[0]?.PriceBreaks || [];
 
-        return {
-            partNumber: partDetail.partNumber,
-            manufacturer: result?.SearchResults?.Parts[0]?.Manufacturer || 'N/A',
-            unitPrice: mouserPrice,
-            stock: mouserStock,
-            totalPrice: !isNaN(totalPrice) ? totalPrice : 'N/A',
-            quantity: quantity,
-            leadTime: mouserLeadTimeDays,
-            supplier: 'Mouser',
-            mouserError: result?.SearchResults?.Parts[0] ? null : 'Mouser verisi bulunamadı'
-        };
-    } catch (error) {
-        console.error(`Mouser API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
-        return {
-            partNumber: partDetail.partNumber,
-            manufacturer: 'N/A',
-            unitPrice: 'N/A',
-            stock: 'N/A',
-            totalPrice: 'N/A',
-            quantity: partDetail.quantity || 'Bilinmiyor',
-            leadTime: 'N/A',
-            supplier: 'Mouser',
-            mouserError: error.message || 'Mouser API çağrısı sırasında bir hata oluştu'
-        };
-    }
-}));
+                    // Doğru fiyatı seçmek için quantity değerine göre PriceBreaks'i kontrol edelim
+                    let mouserPrice = 'N/A';
+                    const quantity = partDetail.quantity || 1;
 
+                    if (priceBreaks.length > 0) {
+                        for (let i = 0; i < priceBreaks.length; i++) {
+                            if (quantity >= priceBreaks[i].Quantity) {
+                                mouserPrice = priceBreaks[i].Price.replace('$', '');
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+
+                    const mouserLeadTimeDays = parseInt(result?.SearchResults?.Parts[0]?.LeadTime || 0);
+                    const totalPrice = (parseFloat(mouserPrice) * quantity).toFixed(2);
+
+                    return {
+                        partNumber: partDetail.partNumber,
+                        manufacturer: result?.SearchResults?.Parts[0]?.Manufacturer || 'N/A',
+                        unitPrice: mouserPrice,
+                        stock: mouserStock,
+                        totalPrice: !isNaN(totalPrice) ? totalPrice : 'N/A',
+                        quantity: quantity,
+                        leadTime: mouserLeadTimeDays,
+                        supplier: 'Mouser'
+                    };
+                } catch (error) {
+                    console.error(`Mouser API çağrısı başarısız oldu: ${partDetail.partNumber}`, error.message);
+                    return {
+                        partNumber: partDetail.partNumber,
+                        manufacturer: 'N/A',
+                        unitPrice: 'N/A',
+                        stock: 'N/A',
+                        totalPrice: 'N/A',
+                        quantity: partDetail.quantity || 'Bilinmiyor',
+                        leadTime: 'N/A',
+                        supplier: 'Mouser'
+                    };
+                }
+            }));
 
             // DigiKey ve Mouser sonuçlarını karşılaştırıyoruz
             const combinedResults = partDetailsFromExcel.map((partDetail, index) => {
@@ -323,7 +311,7 @@ const mouserResults = await Promise.all(partDetailsFromExcel.map(async (partDeta
 
                 let recommendedSupplier = null;
                 let selectedResult = null;
-                let isDiscontinued = false;  // Üretim dışı kontrolü için
+
                 // Lead time ve fiyat karşılaştırması
                 if ((digikey.leadTime !== 'N/A' || mouser.leadTime !== 'N/A') &&
                     (digikey.unitPrice !== 'N/A' || mouser.unitPrice !== 'N/A')) {
@@ -360,17 +348,13 @@ const mouserResults = await Promise.all(partDetailsFromExcel.map(async (partDeta
                     }
 
                 }
- // Discontinued (Üretim dışı) kontrolü
- if (digikey.isDiscontinued || mouser.isDiscontinued) {
-    isDiscontinued = true;
-}
+
                 return {
                     digikey,
                     mouser,
                     recommendedSupplier,
                     selectedResult,
-                    partNumber: partDetail.partNumber,
-                    isDiscontinued // Üretim dışı bilgisi eklendi
+                    partNumber: partDetail.partNumber
                 };
             });
 
@@ -378,16 +362,20 @@ const mouserResults = await Promise.all(partDetailsFromExcel.map(async (partDeta
             const totalPrice = combinedResults.reduce((acc, result) => {
                 const price = result.selectedResult ? parseFloat(result.selectedResult.totalPrice) : 0;
                 return acc + price;
-            }, 0) * bomCount; // Eğer BOM adedi varsa ona göre çarp
+            }, 0) * bomCount;
+
+            // En uzun teslimat süresini bul
+            const maxLeadTime = Math.max(...combinedResults.map(result => result.selectedResult ? result.selectedResult.leadTime : 0));
 
             // Part numarası detaylarını tabloya yansıt
             res.render('dashboard2', {
                 email: req.session.user.email,
-                bomFiles: bomFiles, // Kullanıcının tüm BOM dosyaları
+                bomFiles: bomFiles,
                 bomDetails: combinedResults,
-                selectedFileId: fileId, // Seçili dosya
-                bomCount: bomCount, // BOM adedi
-                totalPrice: totalPrice.toFixed(2) // Toplam fiyatı 2 ondalık basamakla gönder
+                selectedFileId: fileId,
+                bomCount: bomCount,
+                totalPrice: totalPrice.toFixed(2),
+                maxLeadTime // En uzun teslimat süresi
             });
         });
     });
@@ -1155,6 +1143,89 @@ router.post('/update-profile', (req, res) => {
         res.send('Profil başarıyla güncellendi.');
     });
 });
+
+// Mail gönderme rotası
+router.post('/send-bom-email', async (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login'); // Kullanıcı oturum açmamışsa giriş sayfasına yönlendir
+    }
+
+    const userEmail = req.session.user.email; // Oturum açmış kullanıcının email adresi
+
+    // Frontend'den gelen bomDetails, totalPrice ve maxLeadTime bilgilerini alıyoruz
+    let bomDetails;
+    try {
+        bomDetails = JSON.parse(req.body.bomDetails); // bomDetails'i JSON formatına çeviriyoruz
+    } catch (error) {
+        return res.status(400).send('BOM detayları işlenemedi.');
+    }
+
+    const { totalPrice, maxLeadTime } = req.body;
+
+    // Nodemailer transporter yapılandırması
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: 'apitronic06@gmail.com',
+            pass: 'ivax fqrd gdiu jioz'  // Gmail uygulama şifreniz
+        }
+    });
+
+    // HTML içeriğini oluştur
+    const mailContent = `
+        <h3>BOM Detayları</h3>
+        <table border="1" cellpadding="5" cellspacing="0">
+            <thead>
+                <tr>
+                    <th>Üretici Parça Numarası</th>
+                    <th>Üretici</th>
+                    <th>Adet</th>
+                    <th>Stok</th>
+                    <th>Birim Fiyat</th>
+                    <th>Toplam</th>
+                    <th>Önerilen Tedarikçi</th>
+                </tr>
+            </thead>
+            <tbody>
+            ${bomDetails.map(detail => `
+                <tr>
+                    <td>${detail.partNumber}</td>
+                    <td>${detail.selectedResult && detail.selectedResult.manufacturer ? detail.selectedResult.manufacturer : 'Bilgi yok'}</td>
+                    <td>${detail.selectedResult && detail.selectedResult.quantity ? detail.selectedResult.quantity : 'Bilgi yok'}</td>
+                    <td>${detail.selectedResult && detail.selectedResult.stock ? detail.selectedResult.stock : 'N/A'}</td>
+                    <td>${detail.selectedResult && detail.selectedResult.unitPrice ? detail.selectedResult.unitPrice : 'N/A'}</td>
+                    <td>${detail.selectedResult && detail.selectedResult.totalPrice ? detail.selectedResult.totalPrice : 'N/A'}</td>
+                    <td>${detail.recommendedSupplier || 'N/A'}</td>
+                </tr>
+            `).join('')}
+            
+            </tbody>
+        </table>
+
+        <p><strong>Toplam Fiyat:</strong> $${totalPrice}</p>
+        <p><strong>En Uzun Teslimat Süresi:</strong> ${maxLeadTime} gün</p>
+    `;
+
+    // Mail içeriği
+    const mailOptions = {
+        from: '"APItronic" <apitronic06@gmail.com>',
+        to: userEmail,
+        subject: 'BOM Detayları ve Toplam Fiyat Bilgisi',
+        html: mailContent
+    };
+
+    // Mail gönderme
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.log(error);
+            return res.status(500).send('Mail gönderilirken bir hata oluştu.');
+        }
+        console.log('Email gönderildi: ' + info.response);
+        res.send('Mail başarıyla gönderildi.');
+    });
+});
+
+
 
 // Şifreyi güncelleme
 router.post('/update-password', (req, res) => {

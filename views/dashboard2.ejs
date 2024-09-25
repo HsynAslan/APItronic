@@ -285,6 +285,8 @@ width: 25% !important;
 }
 .mailButtons{
     width: 20%;
+    display: flex;
+    justify-content: space-between;
 }
 .navbarButtons {
     background-color: #4CAF50; /* Butonun arka plan rengi */
@@ -395,6 +397,9 @@ width: 25% !important;
                 
                     <!-- Toplam Fiyat Bilgisi -->
                     <p>Toplam Fiyat: $<%= totalPrice %></p>
+                    <div>
+                        <h4>En Yakın Teslimat Bitiş Süresi: <%= maxLeadTime %> gün</h4>
+                    </div>
                     
                     <input type="hidden" name="totalPrice" value="<%= totalPrice %>">
                     <input type="hidden" name="fileId" value="<%= selectedFileId %>"> <!-- BOM dosyasının ID'si -->
@@ -404,7 +409,15 @@ width: 25% !important;
                 
             </div>
             <div class="mailButtons">
-                <button class="navbarButtons">Mail Gönder</button>
+                <form id="sendBomEmailForm" method="POST" action="/send-bom-email">
+                    <!-- Gizli alanlar, bomDetails, totalPrice ve maxLeadTime verilerini POST isteği ile göndermek için -->
+                    <input type="hidden" name="bomDetails" value='<%= JSON.stringify(bomDetails) %>'>
+                    <input type="hidden" name="totalPrice" value="<%= totalPrice %>">
+                    <input type="hidden" name="maxLeadTime" value="<%= maxLeadTime %>">
+                
+                    <button type="submit" class="btn btn-primary navbarButtons">Mail Gönder</button>
+                </form>
+                
                 <button class="navbarButtons">Bilgisayara Kaydet</button>
             </div>
 
