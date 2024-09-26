@@ -1,9 +1,11 @@
+<%- include('partials/leftSide') %>
 <%- include('partials/header') %>
-<%- include('partials/navbar') %>
+
 
 <div class="container">
-    <h1>Üye Ol</h1>
+   
     <form action="/signup" method="POST">
+        <h1>Üye Ol</h1>
         <label for="first_name">Ad:</label>
         <input type="text" name="first_name" required>
 
@@ -26,4 +28,3 @@
     </form>
 </div>
 
-<%- include('partials/footer') %>

@@ -12,20 +12,22 @@
         }
 
         #container {
-            display: flex;
-            height: 100vh; /* Tam ekran boyutunda olacak */
+            position: absolute;
+    height: 100vh;
+    width: 75%;
+    right: 0px;
         }
 
         /* Sol menü */
         #sidebar {
-    width: 90%;
-    background-color: white; /* Arka plan rengini beyaz yaptık */
+            width: 90%;
+    background-color: white;
     padding: 20px;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: flex-start;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Hafif bir gölge eklendi */
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
 }
 
 #sidebar a {
@@ -33,14 +35,25 @@
     text-decoration: none;
     margin: 15px 0;
     font-size: 1.2rem;
-    transition: box-shadow 0.3s ease; /* Hover efektini daha akıcı yap */
+    padding: 10px 15px;
+    border-radius: 5px;
+    width: 100%;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+#sidebar a.active {
+    background-color: #007bff;
+    color: white;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    font-weight: bold; /* Aktif sayfanın yazı kalınlığını artır */
 }
 
-/* Hover durumunda gölge efekti */
 #sidebar a:hover {
-    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2); /* Hafif bir gölge */
-    border-radius: 5px; /* Hafif köşe yuvarlatma */
+    background-color: #007bff;
+    color: white;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
 }
+
 
         /* Sağ içerik alanı */
         #content {
@@ -53,13 +66,14 @@
         }
 
         #select-container {
-    display: flex;
-    width: 88%;
+            display: flex;
+    width: 100%;
     /* text-align: center; */
     margin-bottom: 20px;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: space-around;
     
 }
 
@@ -139,7 +153,8 @@
 
 /* Tablo konteynerini sınırlandır ve overflow ekle */
 #table-container {
-    max-height: 400px; /* Tabloya belirli bir yükseklik veriyoruz */
+    max-width: 100%;
+    max-height: 55vh; /* Tabloya belirli bir yükseklik veriyoruz */
     overflow-y: auto; /* Yatay scroll ekliyoruz */
     border: 1px solid #ccc; /* Dış sınırlar */
 }
@@ -281,12 +296,14 @@ tr.productRow:hover {
     width: 50%;
 }
 #bom-form{
-width: 25% !important;
+width: 50vh;
+margin-bottom: 1vh;
 }
 .mailButtons{
     width: 20%;
     display: flex;
     justify-content: space-between;
+    flex-direction: column;
 }
 .navbarButtons {
     background-color: #4CAF50; /* Butonun arka plan rengi */
@@ -340,50 +357,66 @@ width: 25% !important;
     border-bottom: 2px solid #d9534f; /* Kırmızı alt çizgi */
     padding: 10px;
 }
+.buttonsDiv{
+    width: 50vh;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
     </style>
 </head>
 <body>
+    <%- include('partials/leftSide') %>
     <div id="container">
-        <!-- Sol Menü -->
-         <div class="leftSide">
-        <div id="logo">
-            <div class="logoImage"><img src="/images/logo.png" alt="Logo" id="logo-img"></div>
-
-            <div id="logoBigText">
-                <span id="logoText">SUPPLERA</span>
-                <span id="logoTextUnder">Risk Free Your Chain</span>
-            </div>
-            
-        </div>
-        <div id="sidebar">
-            <a href="/dashboard">BOM Ekle</a>
-            <a href="#">Risk Özeti</a>
-            <a href="#">Ürünler</a>
-            <a href="#">BOM Listeleri</a>
-            <a href="#">Ayrıntılı Raporlar</a>
-            <a href="#">Rapor Ayarları</a>
-            <a href="#">İş Oluşturma</a>
-            <a href="#">Tedarikçi Analizleri</a>
-            <a href="#">Takvim</a>
-        </div>
-         </div>
+        
+        
          <div class="rightBigDiv">
            <!-- Select Option Alanı -->
            <div id="select-container">
-            <form id="bom-form" action="/dashboard2" method="GET" sty>
-                <select name="fileId" id="bom-selector" onchange="this.form.submit()">
-                    <option value="">Bir BOM dosyası seçin</option>
-                    <% bomFiles.forEach(function(bom) { %>
-                        <option value="<%= bom.id %>" <%= bom.id == selectedFileId ? 'selected' : '' %> >
-                            <%= bom.file_name %>
-                        </option>
-                    <% }) %>
-                </select>
-                
-            </form>
+            
+            <% if (! selectedFileId) { %>
+                <form id="bom-form" action="/dashboard2" method="GET" sty>
+                    <select name="fileId" id="bom-selector" onchange="this.form.submit()">
+                        <option value="">Bir BOM dosyası seçin</option>
+                        <% bomFiles.forEach(function(bom) { %>
+                            <option value="<%= bom.id %>" <%= bom.id == selectedFileId ? 'selected' : '' %> >
+                                <%= bom.file_name %>
+                            </option>
+                        <% }) %>
+                    </select>
+                    
+                </form>
+            <% } %>
 
 
             <% if (selectedFileId) { %>
+                <div class="mailButtons">
+                    <form id="bom-form" action="/dashboard2" method="GET" sty>
+                        <select name="fileId" id="bom-selector" onchange="this.form.submit()">
+                            <option value="">Bir BOM dosyası seçin</option>
+                            <% bomFiles.forEach(function(bom) { %>
+                                <option value="<%= bom.id %>" <%= bom.id == selectedFileId ? 'selected' : '' %> >
+                                    <%= bom.file_name %>
+                                </option>
+                            <% }) %>
+                        </select>
+                        
+                    </form>
+                    <div class="buttonsDiv">
+                    <form id="sendBomEmailForm" method="POST" action="/send-bom-email">
+                        <!-- Gizli alanlar, bomDetails, totalPrice ve maxLeadTime verilerini POST isteği ile göndermek için -->
+                        <input type="hidden" name="bomDetails" value='<%= JSON.stringify(bomDetails) %>'>
+                        <input type="hidden" name="totalPrice" value="<%= totalPrice %>">
+                        <input type="hidden" name="maxLeadTime" value="<%= maxLeadTime %>">
+                    
+                        <button type="submit" class="btn btn-primary navbarButtons">Mail Gönder</button>
+                    </form>
+                    
+                    <button class="navbarButtons">Bilgisayara Kaydet</button>
+                </div>
+                </div>
             <div id="bom-count-container" >
                 <form id="bom-count-form" action="/saveBomCount" method="POST" class="formTotal">
                     <!-- BOM ID'sini gizli bir inputla POST ediyoruz -->
@@ -408,18 +441,7 @@ width: 25% !important;
                 </form>
                 
             </div>
-            <div class="mailButtons">
-                <form id="sendBomEmailForm" method="POST" action="/send-bom-email">
-                    <!-- Gizli alanlar, bomDetails, totalPrice ve maxLeadTime verilerini POST isteği ile göndermek için -->
-                    <input type="hidden" name="bomDetails" value='<%= JSON.stringify(bomDetails) %>'>
-                    <input type="hidden" name="totalPrice" value="<%= totalPrice %>">
-                    <input type="hidden" name="maxLeadTime" value="<%= maxLeadTime %>">
-                
-                    <button type="submit" class="btn btn-primary navbarButtons">Mail Gönder</button>
-                </form>
-                
-                <button class="navbarButtons">Bilgisayara Kaydet</button>
-            </div>
+            
 
 
             <% } %>

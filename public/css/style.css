@@ -10,8 +10,12 @@ body {
 }
 
 .container {
-    max-height: 80vh; /* Ekranın %80'i kadar yüksekliğe sahip olacak */
-    overflow-y: auto; /* Yüksekliği aşarsa dikey kaydırma çubuğu gösterilecek */
+    position: absolute;
+    right: 0px;
+    top: 11vh;
+    width: 75%;
+    max-height: 80vh;
+    overflow-y: auto;
     padding: 20px;
     background-color: #f9f9f9;
     border-radius: 10px;
@@ -289,9 +293,13 @@ header h1 {
     background-color: #f1f1f1;
     padding: 20px;
     border-radius: 8px;
-    margin-top: 20px;
+    margin-top: 0px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
+    position: absolute;
+    right: 0px;
+    height: 50%;
+    width: 30%;
 }
 
 .upload-section h3 {

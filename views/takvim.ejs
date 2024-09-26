@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Takvim</title>
+    <style>
+        /* Genel düzen */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr); /* 7 sütun (hafta günleri) */
+            grid-gap: 10px;
+            width: 80%;
+            margin: auto;
+        }
+
+        .day {
+            border: 1px solid #ccc;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .day-number {
+            font-size: 1.5em;
+        }
+
+        .reminder {
+            background-color: yellow;
+            padding: 5px;
+            border-radius: 5px;
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            font-size: 0.8em;
+        }
+
+        #bom-selector {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 1.2rem;
+        }
+        #takvim-container{
+
+            position: absolute;
+    right: 0px;
+    width: 78%;
+    height: 95%;
+        }
+        .reminder-day {
+        background-color: yellow;
+        font-weight: bold;
+    }
+    </style>
+</head>
+<body>
+    <%- include('partials/leftSide') %>
+
+    <div id="takvim-container" style="width: 80%; height: 100%; margin: 0 auto;">
+        <div id="takvim-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <button id="prev-month">← Önceki Ay</button>
+            <h2 id="takvim-title" data-month="<%= month %>" data-year="<%= year %>">
+                <%= monthName %> <%= year %>
+            </h2>
+            <button id="next-month">Sonraki Ay →</button>
+        </div>
+        
+        <table id="takvim-table" border="1" style="width: 100%; text-align: center; height: 90%;">
+            <thead>
+                <tr>
+                    <th>Pzt</th>
+                    <th>Sal</th>
+                    <th>Çar</th>
+                    <th>Per</th>
+                    <th>Cum</th>
+                    <th>Cmt</th>
+                    <th>Paz</th>
+                </tr>
+            </thead>
+            <tbody id="takvim-body">
+                <% for (let i = 0; i < calendar.length; i++) { %>
+                    <tr>
+                        <% for (let j = 0; j < calendar[i].length; j++) { %>
+                            <% if (calendar[i][j] !== 0) { %>
+                                <td class="<%= reminderDays.includes(calendar[i][j]) ? 'reminder-day' : '' %>">
+                                    <%= calendar[i][j] %>
+                                </td>
+                            <% } else { %>
+                                <td></td>
+                            <% } %>
+                        <% } %>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const takvimTitle = document.getElementById('takvim-title');
+            const currentMonth = parseInt(takvimTitle.getAttribute('data-month'));
+            const currentYear = parseInt(takvimTitle.getAttribute('data-year'));
+    
+            document.getElementById('prev-month').addEventListener('click', function() {
+                const newMonth = (currentMonth - 1) === 0 ? 12 : currentMonth - 1;
+                const newYear = (currentMonth - 1) === 0 ? currentYear - 1 : currentYear;
+                window.location.href = `/takvim?month=${newMonth}&year=${newYear}`;
+            });
+    
+            document.getElementById('next-month').addEventListener('click', function() {
+                const newMonth = (currentMonth + 1) === 13 ? 1 : currentMonth + 1;
+                const newYear = (currentMonth + 1) === 13 ? currentYear + 1 : currentYear;
+                window.location.href = `/takvim?month=${newMonth}&year=${newYear}`;
+            });
+        });
+    </script>
+
+</body>
+</html>

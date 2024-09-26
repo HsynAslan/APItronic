@@ -1,9 +1,11 @@
+<%- include('partials/leftSide') %>
 <%- include('partials/header') %>
-<%- include('partials/navbar') %>
+
 
 <div class="container">
-    <h1>Profil Bilgileri</h1>
+    
     <form action="/update-profile" method="POST">
+        <h1>Profil Bilgileri</h1>
         <label for="first_name">Ad:</label>
         <input type="text" name="first_name" value="<%= user.first_name %>" required>
 
@@ -19,8 +21,9 @@
         <button type="submit">Profili Güncelle</button>
     </form>
 
-    <h2>Şifreyi Güncelle</h2>
+    
     <form action="/update-password" method="POST">
+        <h2>Şifreyi Güncelle</h2>
         <label for="current_password">Mevcut Şifre:</label>
         <input type="password" name="current_password" required>
 
@@ -31,4 +34,4 @@
     </form>
 </div>
 
-<%- include('partials/footer') %>
+

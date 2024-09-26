@@ -366,6 +366,22 @@ router.get('/dashboard2/:fileId', async (req, res) => {
 
             // En uzun teslimat süresini bul
             const maxLeadTime = Math.max(...combinedResults.map(result => result.selectedResult ? result.selectedResult.leadTime : 0));
+            const minLeadTime = Math.min(...combinedResults.map(result => result.selectedResult ? result.selectedResult.leadTime : Infinity));
+            
+            
+            
+            // BOM dosyasını güncelle: total_price ve min_lead_time değerlerini veritabanına yaz
+              db.query(
+                'UPDATE bom_files SET total_price = ?, min_lead_time = ? WHERE id = ?',
+                [totalPrice.toFixed(2), maxLeadTime, fileId],
+                (updateErr) => {
+                    if (updateErr) {
+                        console.error('Veritabanı güncellemesi başarısız:', updateErr.message);
+                    }
+                }
+            );
+
+
 
             // Part numarası detaylarını tabloya yansıt
             res.render('dashboard2', {
@@ -408,7 +424,50 @@ router.get('/dashboard2', (req, res) => {
     }
 });
 
+router.get('/takvim', (req, res) => {
+    // Parametrelerden ay ve yıl bilgilerini al, yoksa mevcut ay ve yılı kullan
+    const currentDate = new Date();
+    const month = req.query.month ? parseInt(req.query.month) : currentDate.getMonth() + 1; // Aylar 0-11 arasında olduğu için +1
+    const year = req.query.year ? parseInt(req.query.year) : currentDate.getFullYear();
 
+    // Seçilen ayın gün sayısını hesapla
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // Takvim için haftalık yapı oluştur
+    const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
+    const calendar = [];
+    let week = [];
+    let dayCounter = 1;
+
+    for (let i = 0; i < 6; i++) {
+        week = [];
+        for (let j = 0; j < 7; j++) {
+            if ((i === 0 && j < firstDayOfMonth) || dayCounter > daysInMonth) {
+                week.push(0); // Ay dışındaki hücreler için 0 koy
+            } else {
+                week.push(dayCounter);
+                dayCounter++;
+            }
+        }
+        calendar.push(week);
+        if (dayCounter > daysInMonth) break; // Tüm günler bittiyse döngüyü kır
+    }
+
+    // Ay isimlerini belirle
+    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    const monthName = monthNames[month - 1]; // Ay ismini al
+
+    // Örnek hatırlatıcı günler
+    const reminderDays = [10, 15, 25]; // Bu kısımda kullanıcıya göre dinamik olarak ayarlanabilir
+
+    res.render('takvim', {
+        month: month,
+        year: year,
+        monthName: monthName,
+        calendar: calendar,
+        reminderDays: reminderDays,
+    });
+});
 
 
 

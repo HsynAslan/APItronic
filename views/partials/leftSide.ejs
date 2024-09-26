@@ -1,0 +1,124 @@
+<style>
+    /* Genel düzen */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    height: 100vh; /* Tam ekran boyutunda olacak */
+}
+
+/* Sol menü */
+.sidebar {
+    width: 90%;
+    background-color: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    border-radius: 10px; /* Daha şık bir görünüm için köşeler yuvarlatıldı */
+}
+
+.sidebar a {
+    color: #2c3e50;
+    text-decoration: none;
+    margin: 15px 0;
+    font-size: 1.2rem;
+    padding: 10px 15px;
+    width: 80%;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 10px; /* Daha şık bir görünüm için köşeler yuvarlatıldı */
+}
+
+/* Hover ve aktif durumunda renk ve gölge geçişleri */
+.sidebar a:hover, .sidebar a.active {
+    background-color: #007bff; /* Aktif veya hover durumunda arka plan rengi */
+    color: white; /* Aktif veya hover durumunda yazı rengi */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Hover veya aktif durumda gölge efekti */
+    border-radius: 10px; /* Daha şık bir görünüm için köşeler yuvarlatıldı */
+}
+
+/* İkon eklemek için boşluk düzenlemeleri (isteğe bağlı) */
+.sidebar a::before {
+    content: '•'; /* Menü elemanlarının başına işaret koyma (ikonla değiştirilebilir) */
+    margin-right: 10px; /* İşaret ile yazı arasında boşluk */
+    color: #007bff; /* İkonun rengi */
+    transition: color 0.3s ease; /* İkon renginin geçişi */
+    border-radius: 10px; /* Daha şık bir görünüm için köşeler yuvarlatıldı */
+}
+
+/* Hover durumunda ikonu beyaz yap */
+.sidebar a:hover::before, .sidebar a.active::before {
+    color: white; /* Aktif veya hover durumunda ikonun rengi */
+    border-radius: 10px; /* Daha şık bir görünüm için köşeler yuvarlatıldı */
+}
+
+/* Logo düzeni */
+.logo {
+    display: flex;
+    align-items: center;
+    padding-bottom: 20px; /* Alt tarafa biraz boşluk ekledik */
+}
+
+/* Logo Resmi */
+.logoImage img {
+    width: 60px; /* Logonun genişliği */
+    margin-right: 10px; /* Resmin sağında biraz boşluk */
+}
+
+/* Logonun Sağındaki Metinler */
+.logoBigText {
+    border-left: 2px solid blue; /* Sol tarafa mavi bir çizgi ekledik */
+    padding-left: 10px; /* Çizgi ile metin arasına boşluk */
+    display: flex;
+    flex-direction: column;
+}
+
+.logoText {
+    font-size: 1.8rem; /* Üstteki büyük yazı */
+    color: blue; /* Yazı rengi mavi */
+}
+
+.logoTextUnder {
+    font-size: 0.9rem; /* Altındaki küçük yazı */
+    color: red; /* Yazı rengi kırmızı */
+}
+.leftSide{
+    position: absolute;
+    width: 20%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+}
+
+</style>
+<div class="leftSide">
+    <div class="logo">
+        <div class="logoImage"><img src="/images/logo.png" alt="Logo" class="logo-img"></div>
+
+        <div class="logoBigText">
+            <span class="logoText">SUPPLERA</span>
+            <span class="logoTextUnder">Risk Free Your Chain</span>
+        </div>
+    </div>
+    <div class="sidebar">
+        <a href="/dashboard2">Dashboard</a>
+        <a href="/dashboard">BOM Yükle / Görüntüle</a>
+        <a href="/favorites-and-watchlist">Favori Ürünler</a>
+        <a href="/profile">Profile</a>
+        <a href="#">Risk Özeti</a>
+        <a href="#">Ürünler</a>
+        
+        <!-- <a href="#">Ayrıntılı Raporlar</a>
+        <a href="#">Rapor Ayarları</a>
+        <a href="#">İş Oluşturma</a>
+        <a href="#">Tedarikçi Analizleri</a> -->
+        <a href="/takvim">Takvim</a>
+        <a href="/logout" class="logoutClass">Çıkış Yap</a>
+    </div>
+</div>
