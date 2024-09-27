@@ -9,115 +9,252 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+
+        #takvim-container {
+            position: absolute;
+            right: 0;
+            width: 78%;
+            height: 100%;
+            padding: 20px;
+        }
+
+        #takvim-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #3f51b5;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+
+        #takvim-header h2 {
+            margin: 0;
+        }
+
+        #calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        #calendar-header div {
+            font-weight: bold;
+            background-color: #3f51b5;
+            color: white;
+            padding: 10px;
         }
 
         #calendar {
             display: grid;
-            grid-template-columns: repeat(7, 1fr); /* 7 sütun (hafta günleri) */
-            grid-gap: 10px;
-            width: 80%;
-            margin: auto;
+            grid-template-columns: repeat(7, 1fr);
+            grid-gap: 5px;
+            margin: 20px 0;
         }
 
         .day {
             border: 1px solid #ccc;
-            padding: 20px;
-            text-align: center;
+            min-height: 100px;
+            background-color: #fff;
+            padding: 10px;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
 
         .day-number {
-            font-size: 1.5em;
+            font-size: 1.2em;
+            margin-bottom: 10px;
         }
 
         .reminder {
-            background-color: yellow;
+            background-color: #ffeb3b;
             padding: 5px;
             border-radius: 5px;
-            position: absolute;
-            bottom: 5px;
-            right: 5px;
-            font-size: 0.8em;
+            font-size: 0.9em;
+            color: #333;
+            margin-top: 5px;
         }
 
-        #bom-selector {
-            margin-bottom: 20px;
+        .reminder-day {
+            background-color: #ffeb3b;
+            font-weight: bold;
+        }
+
+        #bom-select {
             padding: 10px;
             font-size: 1.2rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 100%;
+            max-width: 300px;
         }
-        #takvim-container{
 
-            position: absolute;
-    right: 0px;
-    width: 78%;
-    height: 95%;
+        input[type="text"], button {
+            padding: 10px;
+            font-size: 1rem;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 100%;
+            max-width: 300px;
         }
-        .reminder-day {
-        background-color: yellow;
-        font-weight: bold;
-    }
+
+        button {
+            background-color: #3f51b5;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #283593;
+        }
     </style>
 </head>
 <body>
     <%- include('partials/leftSide') %>
 
-    <div id="takvim-container" style="width: 80%; height: 100%; margin: 0 auto;">
-        <div id="takvim-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div id="takvim-container">
+        <!-- Takvim Başlığı -->
+        <div id="takvim-header">
             <button id="prev-month">← Önceki Ay</button>
             <h2 id="takvim-title" data-month="<%= month %>" data-year="<%= year %>">
                 <%= monthName %> <%= year %>
             </h2>
             <button id="next-month">Sonraki Ay →</button>
         </div>
-        
-        <table id="takvim-table" border="1" style="width: 100%; text-align: center; height: 90%;">
-            <thead>
-                <tr>
-                    <th>Pzt</th>
-                    <th>Sal</th>
-                    <th>Çar</th>
-                    <th>Per</th>
-                    <th>Cum</th>
-                    <th>Cmt</th>
-                    <th>Paz</th>
-                </tr>
-            </thead>
-            <tbody id="takvim-body">
-                <% for (let i = 0; i < calendar.length; i++) { %>
-                    <tr>
-                        <% for (let j = 0; j < calendar[i].length; j++) { %>
-                            <% if (calendar[i][j] !== 0) { %>
-                                <td class="<%= reminderDays.includes(calendar[i][j]) ? 'reminder-day' : '' %>">
-                                    <%= calendar[i][j] %>
-                                </td>
-                            <% } else { %>
-                                <td></td>
-                            <% } %>
+
+        <!-- BOM Dosyası Seçme Alanı -->
+        <div>
+            <form id="bom-select-form" action="/takvim" method="GET">
+                <label for="bom-select">Bir BOM dosyası seçin:</label>
+                <select name="fileId" id="bom-select" onchange="this.form.submit()">
+                    <option value="">BOM dosyası seçin</option>
+                    <% bomFiles.forEach(function(bom) { %>
+                        <option value="<%= bom.id %>" <%= bom.id == selectedFileId ? 'selected' : '' %>>
+                            <%= bom.file_name %>
+                        </option>
+                    <% }) %>
+                </select>
+            </form>
+        </div>
+
+        <!-- Sipariş Adı Giriş Alanı -->
+        <% if (selectedFileId) { %>
+        <div id="order-form-container">
+            <form id="order-form" action="/takvim/addOrder" method="POST">
+                <label for="bomId" style="display: none;">BOM Dosyası Seçin:</label>
+                <select name="bomId" id="bomId" style="display: none;">
+                    <% bomFiles.forEach(bom => { %>
+                        <option value="<%= bom.id %>"><%= bom.file_name %></option>
+                    <% }) %>
+                </select>
+            
+                <label for="orderName">Sipariş Adı:</label>
+                <input type="text" name="orderName" id="orderName" required>
+            
+                <button type="submit">Siparişi Ekle</button>
+            </form>
+        </div>
+        <% } %>
+
+        <!-- Takvim Alanı -->
+        <div id="calendar-header">
+            <div>Pazartesi</div>
+            <div>Salı</div>
+            <div>Çarşamba</div>
+            <div>Perşembe</div>
+            <div>Cuma</div>
+            <div>Cumartesi</div>
+            <div>Pazar</div>
+        </div>
+        <div id="calendar">
+            <% weeks.forEach(week => { %>
+                <% week.forEach(day => { %>
+                    <div class="day" data-day="<%= day.day %>">
+                        <% if (day.day) { %>
+                            <div class="day-number"><%= day.day %></div>
+                            <% orders.forEach(order => { %>
+                                <% if (new Date(order.due_date).getDate() === day.day && new Date(order.due_date).getMonth() === month) { %>
+                                    <div class="reminder">
+                                        <%= order.order_name %> - $<%= order.total_price %>
+                                    </div>
+                                <% } %>
+                            <% }) %>
                         <% } %>
-                    </tr>
-                <% } %>
-            </tbody>
-        </table>
+                    </div>
+                <% }); %>
+            <% }); %>
+        </div>
     </div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const takvimTitle = document.getElementById('takvim-title');
-            const currentMonth = parseInt(takvimTitle.getAttribute('data-month'));
-            const currentYear = parseInt(takvimTitle.getAttribute('data-year'));
+            const prevMonthBtn = document.getElementById('prev-month');
+            const nextMonthBtn = document.getElementById('next-month');
     
-            document.getElementById('prev-month').addEventListener('click', function() {
-                const newMonth = (currentMonth - 1) === 0 ? 12 : currentMonth - 1;
-                const newYear = (currentMonth - 1) === 0 ? currentYear - 1 : currentYear;
-                window.location.href = `/takvim?month=${newMonth}&year=${newYear}`;
+            let currentMonth = parseInt(takvimTitle.getAttribute('data-month'));
+            let currentYear = parseInt(takvimTitle.getAttribute('data-year'));
+    
+            function updateCalendar(month, year) {
+                window.location.href = `/takvim?month=${month}&year=${year}`;
+            }
+    
+            // Önceki ay butonu
+            prevMonthBtn.addEventListener('click', function () {
+                currentMonth -= 1;
+                if (currentMonth < 0) {
+                    currentMonth = 11;
+                    currentYear -= 1;
+                }
+                updateCalendar(currentMonth, currentYear);
             });
     
-            document.getElementById('next-month').addEventListener('click', function() {
-                const newMonth = (currentMonth + 1) === 13 ? 1 : currentMonth + 1;
-                const newYear = (currentMonth + 1) === 13 ? currentYear + 1 : currentYear;
-                window.location.href = `/takvim?month=${newMonth}&year=${newYear}`;
+            // Sonraki ay butonu
+            nextMonthBtn.addEventListener('click', function () {
+                currentMonth += 1;
+                if (currentMonth > 11) {
+                    currentMonth = 0;
+                    currentYear += 1;
+                }
+                updateCalendar(currentMonth, currentYear);
+            });
+    
+            // Sipariş formu başarılı olduğunda alert göster ve takvimi güncelle
+            document.getElementById('order-form').addEventListener('submit', function(event) {
+                event.preventDefault();
+    
+                const bomId = document.getElementById('bomId').value;
+                const orderName = document.getElementById('orderName').value;
+    
+                fetch('/takvim/addOrder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ bomId, orderName })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert(`Sipariş başarıyla ${result.due_date} tarihine eklendi!`);
+                        location.reload(); // Takvimi güncellemek için sayfayı yeniden yükleyelim
+                    } else {
+                        alert(result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Bir hata oluştu:', error);
+                    alert('Sipariş eklenirken bir hata oluştu.');
+                });
             });
         });
     </script>
-
+    
 </body>
 </html>

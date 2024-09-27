@@ -423,49 +423,149 @@ router.get('/dashboard2', (req, res) => {
         res.redirect('/login');
     }
 });
+// Sipariş ekleme rotası
+// Sipariş ekleme rotası
+router.post('/takvim/addOrder', (req, res) => {
+    const { bomId, orderName } = req.body;
 
-router.get('/takvim', (req, res) => {
-    // Parametrelerden ay ve yıl bilgilerini al, yoksa mevcut ay ve yılı kullan
-    const currentDate = new Date();
-    const month = req.query.month ? parseInt(req.query.month) : currentDate.getMonth() + 1; // Aylar 0-11 arasında olduğu için +1
-    const year = req.query.year ? parseInt(req.query.year) : currentDate.getFullYear();
+    // Seçilen BOM dosyasının min_lead_time değerini çekme
+    db.query('SELECT min_lead_time FROM bom_files WHERE id = ?', [bomId], (err, results) => {
+        if (err || results.length === 0) {
+            console.error(err);
+            return res.status(404).json({ success: false, message: 'BOM dosyası bulunamadı.' });
+        }
 
-    // Seçilen ayın gün sayısını hesapla
-    const daysInMonth = new Date(year, month, 0).getDate();
+        const minLeadTime = results[0].min_lead_time;
+        const today = new Date();
 
-    // Takvim için haftalık yapı oluştur
-    const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
-    const calendar = [];
-    let week = [];
+        // Sipariş teslim tarihini hesaplama (min_lead_time ekleyerek)
+        const dueDate = new Date(today);
+        dueDate.setDate(today.getDate() + minLeadTime);
+
+        // Siparişi veritabanına ekleme
+        const insertOrderQuery = `
+            INSERT INTO orders (bom_id, order_name, due_date, total_price)
+            VALUES (?, ?, ?, (SELECT total_price FROM bom_files WHERE id = ?))
+        `;
+        db.query(insertOrderQuery, [bomId, orderName, dueDate, bomId], (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ success: false, message: 'Sipariş eklenirken bir hata oluştu.' });
+            }
+
+            // Sipariş başarıyla eklendiğinde JSON formatında başarı mesajı döndür
+            res.status(200).json({
+                success: true,
+                message: 'Sipariş başarıyla eklendi.',
+                due_date: dueDate.toISOString().split('T')[0], // Tarihi YYYY-MM-DD formatında döndür
+            });
+        });
+    });
+});
+
+
+// Sipariş ekleme formu için ayrı bir rota (BOM dosyasına sipariş adı ekleme)
+router.post('/takvim/add-order-name', (req, res) => {
+    const { fileId, orderName } = req.body;
+
+    const addOrderQuery = `
+        INSERT INTO orders (bom_id, order_name, due_date)
+        VALUES (?, ?, ?)
+    `;
+
+    db.query(addOrderQuery, [fileId, orderName, new Date()], (err, result) => {
+        if (err) {
+            console.error("Sipariş eklenirken bir hata oluştu:", err);
+            return res.send('Sipariş eklenirken bir hata oluştu.');
+        }
+
+        // Sipariş eklendikten sonra takvim sayfasına yönlendirelim
+        res.redirect('/takvim');
+    });
+});
+
+// Takvim verilerini BOM dosyalarına göre oluştur
+function generateCalendar(month, year) {
+    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const lastDateOfMonth = new Date(year, month + 1, 0).getDate();
+
+    let weeks = [];
+    let days = [];
     let dayCounter = 1;
 
-    for (let i = 0; i < 6; i++) {
-        week = [];
-        for (let j = 0; j < 7; j++) {
-            if ((i === 0 && j < firstDayOfMonth) || dayCounter > daysInMonth) {
-                week.push(0); // Ay dışındaki hücreler için 0 koy
+    for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
+        days = [];
+        for (let dayIndex = 1; dayIndex <= 7; dayIndex++) {
+            if (weekIndex === 0 && dayIndex < firstDayOfMonth) {
+                days.push({ day: null });
+            } else if (dayCounter > lastDateOfMonth) {
+                days.push({ day: null });
             } else {
-                week.push(dayCounter);
+                days.push({ day: dayCounter });
                 dayCounter++;
             }
         }
-        calendar.push(week);
-        if (dayCounter > daysInMonth) break; // Tüm günler bittiyse döngüyü kır
+        weeks.push(days);
+        if (dayCounter > lastDateOfMonth) {
+            break;
+        }
     }
 
-    // Ay isimlerini belirle
-    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-    const monthName = monthNames[month - 1]; // Ay ismini al
+    return weeks;
+}
 
-    // Örnek hatırlatıcı günler
-    const reminderDays = [10, 15, 25]; // Bu kısımda kullanıcıya göre dinamik olarak ayarlanabilir
+// Takvim sayfası: BOM dosyalarını getir ve seçilen ayı takvimde göster
+router.get('/takvim', (req, res) => {
+    const userId = req.session.user.id;
+    const { month, year, fileId } = req.query;
 
-    res.render('takvim', {
-        month: month,
-        year: year,
-        monthName: monthName,
-        calendar: calendar,
-        reminderDays: reminderDays,
+    const currentDate = new Date();
+    const selectedMonth = month ? parseInt(month) : currentDate.getMonth();
+    const selectedYear = year ? parseInt(year) : currentDate.getFullYear();
+
+    // Kullanıcının BOM dosyalarını getirme
+    db.query('SELECT id, file_name FROM bom_files WHERE user_id = ?', [userId], (err, bomFiles) => {
+        if (err) {
+            console.error(err);
+            return res.send('Bir hata oluştu.');
+        }
+
+        if (bomFiles.length === 0) {
+            return res.status(404).send('BOM dosyası bulunamadı.');
+        }
+
+        // Siparişlerin getirilmesi (bom_files ile ilişkili siparişler)
+        const ordersQuery = `
+            SELECT orders.order_name, orders.due_date, bom_files.total_price
+            FROM orders 
+            JOIN bom_files ON orders.bom_id = bom_files.id
+            WHERE bom_files.user_id = ?
+        `;
+
+        db.query(ordersQuery, [userId], (err, orders) => {
+            if (err) {
+                console.error(err);
+                return res.send('Siparişler alınamadı.');
+            }
+
+            // Takvim ayı ve günleri hesaplama
+            const weeks = generateCalendar(selectedMonth, selectedYear);
+
+            const monthNames = [
+                'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+                'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+            ];
+
+            res.render('takvim', {
+                orders: orders,
+                month: selectedMonth,
+                year: selectedYear,
+                monthName: monthNames[selectedMonth],
+                weeks: weeks,
+                bomFiles: bomFiles,
+                selectedFileId: fileId || null
+            });
+        });
     });
 });
 
