@@ -397,6 +397,61 @@ router.get('/dashboard2/:fileId', async (req, res) => {
     });
 });
 
+router.post('/bom_tracking/update', (req, res) => {
+    const userId = req.session.user.id;
+
+    const bomFiles = Object.keys(req.body).filter(key => key.startsWith('updateInterval_')).map(key => {
+        const bomId = key.split('_')[1];
+        return {
+            bomId: bomId,
+            updateInterval: req.body[`updateInterval_${bomId}`],
+            partNotification: req.body[`partNotification_${bomId}`] ? 1 : 0,
+            updateDisabled: req.body[`disableUpdate_${bomId}`] ? 1 : 0
+        };
+    });
+
+    bomFiles.forEach(bom => {
+        const updateQuery = `
+            UPDATE bom_files
+            SET update_interval = ?, part_notification = ?, update_disabled = ?
+            WHERE user_id = ? AND id = ?
+        `;
+        db.query(updateQuery, [bom.updateInterval, bom.partNotification, bom.updateDisabled, userId, bom.bomId], (err) => {
+            if (err) {
+                console.error("Ayarlar kaydedilemedi:", err);
+                return res.send('Ayarlar kaydedilemedi.');
+            }
+        });
+    });
+
+    res.redirect('/bom_tracking');
+});
+
+
+
+
+router.get('/bom_tracking', (req, res) => {
+    const userId = req.session.user.id; // Oturum açmış kullanıcı ID'si
+
+    const query = `
+        SELECT id, file_name, update_interval, part_notification, update_disabled, last_update
+        FROM bom_files
+        WHERE user_id = ?
+    `;
+
+    db.query(query, [userId], (err, bomFiles) => {
+        if (err) {
+            console.error("Veriler alınırken bir hata oluştu:", err);
+            return res.send("Veriler alınamadı.");
+        }
+
+        res.render('bom_tracking', {
+            bomFiles: bomFiles
+        });
+    });
+});
+
+
 
 router.get('/dashboard2', (req, res) => {
     if (req.session.user) {

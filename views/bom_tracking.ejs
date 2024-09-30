@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOM Takip Ayarları</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+    margin-top: 4%;
+    margin-left: 22%;
+    max-width: 75%;
+    /* margin-left: auto; */
+    margin-right: auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+        h1 {
+            text-align: center;
+            color: #333;
+            font-weight: 300;
+            margin-bottom: 30px;
+        }
+
+        .bom-list {
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+
+        .bom-item {
+            background-color: #fafafa;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .bom-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .bom-item select, .bom-item input[type="checkbox"] {
+            padding: 8px;
+            margin-left: 10px;
+            border: 1px solid #dcdcdc;
+            border-radius: 4px;
+            transition: border-color 0.3s ease;
+        }
+
+        .bom-item select:focus, .bom-item input[type="checkbox"]:focus {
+            outline: none;
+            border-color: #4caf50;
+        }
+
+        .bom-item label {
+            margin-left: 15px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .bom-item span {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .save-button {
+            background-color: #4caf50;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .save-button:hover {
+            background-color: #45a049;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .save-button:active {
+            background-color: #39903d;
+        }
+
+        .bom-item .last-update {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        .bom-item select {
+            background-color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 1rem;
+            color: #555;
+            border: 1px solid #ccc;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                max-width: 90%;
+                padding: 20px;
+            }
+
+            .bom-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .bom-item select {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            .bom-item label, .bom-item .last-update {
+                margin-top: 10px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <%- include('partials/leftSide') %>
+    <div class="container">
+        <div class="uContainer">
+        <h1>BOM Dosyası Takip Ayarları</h1>
+
+        <form action="/bom_tracking/update" method="POST">
+            <ul class="bom-list">
+                <% bomFiles.forEach(function(bom) { %>
+                <li class="bom-item">
+                    <span><%= bom.file_name %></span>
+
+                    <!-- Güncelleme Sıklığı Seçimi -->
+                    <select name="updateInterval_<%= bom.id %>">
+                        <option value="daily" <%= bom.update_interval === 'daily' ? 'selected' : '' %> >Günlük</option>
+                        <option value="weekly" <%= bom.update_interval === 'weekly' ? 'selected' : '' %> >Haftalık</option>
+                        <option value="monthly" <%= bom.update_interval === 'monthly' ? 'selected' : '' %> >Aylık</option>
+                    </select>
+
+                    <!-- Part Bazında Bildirim Checkbox'ı -->
+                    <label>
+                        <input type="checkbox" name="partNotification_<%= bom.id %>" <%= bom.part_notification ? 'checked' : '' %> >
+                        Part numarası bazında bildirim al
+                    </label>
+
+                    <!-- Güncelleme Yapılmasın Checkbox'ı -->
+                    <label>
+                        <input type="checkbox" name="disableUpdate_<%= bom.id %>" <%= bom.update_disabled ? 'checked' : '' %> >
+                        Güncellemeyi devre dışı bırak
+                    </label>
+
+                    <!-- Son Güncelleme Bilgisi -->
+                    <span class="last-update">Son güncelleme: <%= bom.last_update ? bom.last_update : 'Henüz güncellenmedi' %></span>
+                </li>
+                <% }); %>
+            </ul>
+
+            <div style="text-align: center;">
+                <button type="submit" class="save-button">Ayarları Kaydet</button>
+            </div>
+        </form>
+    </div>
+    </div>
+</body>
+</html>
