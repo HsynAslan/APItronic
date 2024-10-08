@@ -14,11 +14,11 @@ async function callDigiKeyAPI(partNumber, token) {
         });
 
         // Gelen yanıtı loglayarak kontrol edelim
-        console.log('DigiKey API Yanıtı:', response.data);
+        // console.log('DigiKey API Yanıtı:', response.data);
 
         return response.data; // API’den gelen veriyi döndürüyoruz
     } catch (error) {
-        console.error(`API çağrısı başarısız oldu: ${partNumber}`, error.message);
+        // console.error(`API çağrısı başarısız oldu: ${partNumber}`, error.message);
         throw new Error(`API çağrısı başarısız oldu: ${partNumber}`);
     }
 }

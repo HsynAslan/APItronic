@@ -155,9 +155,10 @@
 
                     <!-- Güncelleme Sıklığı Seçimi -->
                     <select name="updateInterval_<%= bom.id %>">
-                        <option value="daily" <%= bom.update_interval === 'daily' ? 'selected' : '' %> >Günlük</option>
-                        <option value="weekly" <%= bom.update_interval === 'weekly' ? 'selected' : '' %> >Haftalık</option>
-                        <option value="monthly" <%= bom.update_interval === 'monthly' ? 'selected' : '' %> >Aylık</option>
+                        <option value="minute" <%= bom.update_interval === 'minute' ? 'selected' : '' %>>Dakika</option>
+                        <option value="daily" <%= bom.update_interval === 'daily' ? 'selected' : '' %>>Günlük</option>
+                        <option value="weekly" <%= bom.update_interval === 'weekly' ? 'selected' : '' %>>Haftalık</option>
+                        <option value="monthly" <%= bom.update_interval === 'monthly' ? 'selected' : '' %>>Aylık</option>
                     </select>
 
                     <!-- Part Bazında Bildirim Checkbox'ı -->
@@ -173,7 +174,16 @@
                     </label>
 
                     <!-- Son Güncelleme Bilgisi -->
-                    <span class="last-update">Son güncelleme: <%= bom.last_update ? bom.last_update : 'Henüz güncellenmedi' %></span>
+                    <span class="last-update">
+                        Son güncelleme: 
+                        <% if (bom.last_updated) { %>
+                            <%= new Date(bom.last_updated).toLocaleDateString() %> 
+                            <%= new Date(bom.last_updated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+                        <% } else { %>
+                            Henüz güncellenmedi
+                        <% } %>
+                    </span>
+                    
                 </li>
                 <% }); %>
             </ul>
@@ -185,4 +195,6 @@
     </div>
     </div>
 </body>
+
+
 </html>

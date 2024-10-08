@@ -5,7 +5,7 @@ async function callFarnellAPI(partNumber) {
     const apiKey = 'wp2zndpspfju9c9cd2z5ax6s'; // API Anahtarınızı buraya ekleyin
 
     try {
-        console.log("try içine girdi bao");
+        // console.log("try içine girdi bao");
         // Sorgu parametreleri ile URL'yi oluşturuyoruz
         const response = await axios.get(apiUrl, {
             params: {
@@ -22,12 +22,12 @@ async function callFarnellAPI(partNumber) {
         });
 
         // Gelen yanıtı loglayarak kontrol edelim
-        console.log('Farnell API Yanıtı:', response.data);
+        // console.log('Farnell API Yanıtı:', response.data);
 
         return response.data; // API’den gelen veriyi döndürüyoruz
     } catch (error) {
-        console.error(`API çağrısı başarısız oldu: ${partNumber}`, error.message);
-        console.log("error: "+error);
+        // console.error(`API çağrısı başarısız oldu: ${partNumber}`, error.message);
+        // console.log("error: "+error);
         throw new Error(`Farnell API çağrısı başarısız oldu: ${partNumber}`);
     }
 }

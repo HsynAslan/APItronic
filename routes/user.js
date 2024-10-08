@@ -369,17 +369,210 @@ router.get('/dashboard2/:fileId', async (req, res) => {
             const minLeadTime = Math.min(...combinedResults.map(result => result.selectedResult ? result.selectedResult.leadTime : Infinity));
             
             
-            
-            // BOM dosyasını güncelle: total_price ve min_lead_time değerlerini veritabanına yaz
-              db.query(
-                'UPDATE bom_files SET total_price = ?, min_lead_time = ? WHERE id = ?',
-                [totalPrice.toFixed(2), maxLeadTime, fileId],
-                (updateErr) => {
-                    if (updateErr) {
-                        console.error('Veritabanı güncellemesi başarısız:', updateErr.message);
-                    }
+            // BOM dosyasını güncelle: total_price ve min_lead_time değerlerini veritabanına yaz ve bom_parts tablosunu da güncelle
+db.query(
+    'SELECT bom_price_1, bom_price_2, bom_price_3, bom_price_4, bom_price_5, bom_count FROM bom_files WHERE id = ?',
+    [fileId], 
+    (selectErr, bomData) => {
+        if (selectErr || bomData.length === 0) {
+            console.error('Veritabanı sorgusu başarısız:', selectErr ? selectErr.message : 'BOM dosyası bulunamadı.');
+            return;
+        }
+
+        // Mevcut fiyat ve lead time bilgilerini alıyoruz
+        const { bom_price_1, bom_price_2, bom_price_3, bom_price_4, bom_price_5, bom_count } = bomData[0];
+
+        // BOM adet sayısına göre birim fiyat hesaplayalım
+        const unitPrice = totalPrice / bom_count;
+
+        let priceSlot, leadTimeSlot, priceDateSlot, leadTimeDateSlot;
+
+        // İlk boş fiyat slotunu buluyoruz ya da en eskisini seçiyoruz
+        if (!bom_price_1) {
+            priceSlot = 'bom_price_1';
+            leadTimeSlot = 'bom_lead_time_1';
+            priceDateSlot = 'bom_price_1_date';
+            leadTimeDateSlot = 'bom_lead_time_1_date';
+        } else if (!bom_price_2) {
+            priceSlot = 'bom_price_2';
+            leadTimeSlot = 'bom_lead_time_2';
+            priceDateSlot = 'bom_price_2_date';
+            leadTimeDateSlot = 'bom_lead_time_2_date';
+        } else if (!bom_price_3) {
+            priceSlot = 'bom_price_3';
+            leadTimeSlot = 'bom_lead_time_3';
+            priceDateSlot = 'bom_price_3_date';
+            leadTimeDateSlot = 'bom_lead_time_3_date';
+        } else if (!bom_price_4) {
+            priceSlot = 'bom_price_4';
+            leadTimeSlot = 'bom_lead_time_4';
+            priceDateSlot = 'bom_price_4_date';
+            leadTimeDateSlot = 'bom_lead_time_4_date';
+        } else if (!bom_price_5) {
+            priceSlot = 'bom_price_5';
+            leadTimeSlot = 'bom_lead_time_5';
+            priceDateSlot = 'bom_price_5_date';
+            leadTimeDateSlot = 'bom_lead_time_5_date';
+        } else {
+            // Eğer tüm slotlar doluysa, FIFO mantığı ile en eskisini güncelleyelim
+            priceSlot = 'bom_price_1';
+            leadTimeSlot = 'bom_lead_time_1';
+            priceDateSlot = 'bom_price_1_date';
+            leadTimeDateSlot = 'bom_lead_time_1_date';
+        }
+
+        // Yeni birim fiyat ve lead time bilgilerini ve tarihlerini yaz
+        db.query(
+            `UPDATE bom_files 
+            SET total_price = ?, min_lead_time = ?, ${priceSlot} = ?, ${leadTimeSlot} = ?, ${priceDateSlot} = NOW(), ${leadTimeDateSlot} = NOW() 
+            WHERE id = ?`,
+            [totalPrice.toFixed(2), maxLeadTime, unitPrice.toFixed(2), maxLeadTime, fileId],
+            (updateErr) => {
+                if (updateErr) {
+                    console.error('Veritabanı güncellemesi başarısız:', updateErr.message);
                 }
-            );
+            }
+        );
+
+// Part numaraları için bom_parts tablosunu güncelle
+partDetailsFromExcel.forEach(part => {
+    const { partNumber, quantity } = part;
+
+    // DigiKey ve Mouser sonuçlarını al
+    const digikey = digikeyResults.find(item => item.partNumber === partNumber);
+    const mouser = mouserResults.find(item => item.partNumber === partNumber);
+
+    let recommendedSupplier = null;
+    let selectedResult = null;
+
+    // Fiyat ve lead time bilgilerini kontrol et
+    const isValidPrice = (price) => {
+        // Fiyatın geçerli olup olmadığını kontrol et ve logla
+        console.log(`Fiyat kontrol ediliyor: ${price}`);
+        return price !== null && price !== 'N/A' && price !== undefined && parseFloat(price) > 0;
+    };
+
+    if ((digikey && isValidPrice(digikey.unitPrice) && digikey.leadTime !== 'N/A') || 
+        (mouser && isValidPrice(mouser.unitPrice) && mouser.leadTime !== 'N/A')) {
+
+        if (digikey && mouser) {
+            // Eğer her iki tedarikçinin de geçerli fiyat ve lead time bilgisi varsa karşılaştırma yap
+            console.log(`DigiKey fiyatı: ${digikey.unitPrice}, Mouser fiyatı: ${mouser.unitPrice}`);
+
+            if (digikey.leadTime === mouser.leadTime) {
+                // Lead time eşitse, fiyat karşılaştırması yap
+                if (parseFloat(mouser.unitPrice) < parseFloat(digikey.unitPrice)) {
+                    recommendedSupplier = 'Mouser';
+                    selectedResult = mouser;
+                } else {
+                    recommendedSupplier = 'DigiKey';
+                    selectedResult = digikey;
+                }
+            } else if (mouser.leadTime < digikey.leadTime) {
+                // Mouser'ın lead time'ı daha kısa ise
+                recommendedSupplier = 'Mouser';
+                selectedResult = mouser;
+            } else {
+                // DigiKey'in lead time'ı daha kısa ise
+                recommendedSupplier = 'DigiKey';
+                selectedResult = digikey;
+            }
+        } else if (mouser && isValidPrice(mouser.unitPrice)) {
+            // Sadece Mouser varsa ve fiyat geçerliyse
+            recommendedSupplier = 'Mouser';
+            selectedResult = mouser;
+        } else if (digikey && isValidPrice(digikey.unitPrice)) {
+            // Sadece DigiKey varsa ve fiyat geçerliyse
+            recommendedSupplier = 'DigiKey';
+            selectedResult = digikey;
+        }
+
+       
+// Fiyatları direkt olarak kaydedelim, hiçbir bölme işlemi yapılmayacak
+if (selectedResult && selectedResult.unitPrice !== 'N/A') {
+    console.log(`Bölmeden önce fiyat: ${selectedResult.unitPrice}`);
+
+    // Fiyatı olduğu gibi kaydet
+    selectedResult.unitPrice = parseFloat(selectedResult.unitPrice).toFixed(3);
+    console.log(`Bölmeden sonra fiyat: ${selectedResult.unitPrice}`);
+}
+
+
+
+        // BOM parçası tablosunu sorgula
+        db.query('SELECT * FROM bom_parts WHERE bom_id = ? AND part_number = ?', 
+        [fileId, partNumber], (err, existingPart) => {
+            if (err) {
+                console.error('Veritabanında bir hata oluştu:', err);
+                return;
+            }
+
+            if (existingPart.length > 0) {
+                // Mevcut part varsa FIFO mantığı ile güncelleyelim
+                let partPriceSlot, partLeadTimeSlot, partPriceDateSlot, partLeadTimeDateSlot;
+                const partData = existingPart[0];
+
+                if (!partData.price_1) {
+                    partPriceSlot = 'price_1';
+                    partLeadTimeSlot = 'lead_time_1';
+                    partPriceDateSlot = 'price_1_date';
+                    partLeadTimeDateSlot = 'lead_time_1_date';
+                } else if (!partData.price_2) {
+                    partPriceSlot = 'price_2';
+                    partLeadTimeSlot = 'lead_time_2';
+                    partPriceDateSlot = 'price_2_date';
+                    partLeadTimeDateSlot = 'lead_time_2_date';
+                } else if (!partData.price_3) {
+                    partPriceSlot = 'price_3';
+                    partLeadTimeSlot = 'lead_time_3';
+                    partPriceDateSlot = 'price_3_date';
+                    partLeadTimeDateSlot = 'lead_time_3_date';
+                } else if (!partData.price_4) {
+                    partPriceSlot = 'price_4';
+                    partLeadTimeSlot = 'lead_time_4';
+                    partPriceDateSlot = 'price_4_date';
+                    partLeadTimeDateSlot = 'lead_time_4_date';
+                } else if (!partData.price_5) {
+                    partPriceSlot = 'price_5';
+                    partLeadTimeSlot = 'lead_time_5';
+                    partPriceDateSlot = 'price_5_date';
+                    partLeadTimeDateSlot = 'lead_time_5_date';
+                } else {
+                    // Tüm slotlar doluysa FIFO mantığıyla güncelle
+                    partPriceSlot = 'price_1';
+                    partLeadTimeSlot = 'lead_time_1';
+                    partPriceDateSlot = 'price_1_date';
+                    partLeadTimeDateSlot = 'lead_time_1_date';
+                }
+
+                // Güncellenen fiyatı loglayalım
+                console.log(`Veritabanına yazılacak fiyat: ${selectedResult.unitPrice}`);
+
+                // Yeni fiyat ve lead time bilgilerini ve tedarikçiyi güncelle
+                db.query(
+                    `UPDATE bom_parts 
+                    SET ${partPriceSlot} = ?, ${partLeadTimeSlot} = ?, ${partPriceDateSlot} = NOW(), ${partLeadTimeDateSlot} = NOW(), supplier = ?
+                    WHERE bom_id = ? AND part_number = ?`,
+                    [selectedResult.unitPrice, selectedResult.leadTime, recommendedSupplier, fileId, partNumber],
+                    (updateErr) => {
+                        if (updateErr) {
+                            console.error('Part güncellemesi sırasında hata oluştu:', updateErr.message);
+                        }
+                    }
+                );
+            }
+        });
+    }
+});
+
+
+
+    }
+);
+
+
+
+
 
 
 
@@ -912,6 +1105,7 @@ router.get('/download/:id', (req, res) => {
     });
 });
 // Dosya yükleme rotası
+// Dosya yükleme rotası
 router.post('/upload-bom', upload.single('bomFile'), (req, res) => {
     const userId = req.session.user.id;
 
@@ -930,19 +1124,54 @@ router.post('/upload-bom', upload.single('bomFile'), (req, res) => {
             return res.send('Dosya okunurken bir hata oluştu.');
         }
 
-        // veritabanı kontrolü
+        // Dosyayı JSON formatına çeviriyoruz (Excel'den JSON'a)
+        const fileBuffer = Buffer.from(data);
+        const excelData = loadExcel(fileBuffer); // Excel dosyasını JSON formatına çeviriyoruz
+        const partDetailsFromExcel = filterPartNumbersAndQuantities(excelData); // Part numaralarını ve quantity bilgilerini alıyoruz
+
+        // Veritabanına bom_files ekle
         db.query('INSERT INTO bom_files (user_id, file_name, file_content) VALUES (?, ?, ?)', 
         [userId, fileName, data], (err, result) => {
             if (err) {
                 console.error(err);
                 return res.send('BOM dosyası veritabanına kaydedilirken bir hata oluştu.');
             }
-            // başarılı
+
+            const bomId = result.insertId; // Yeni eklenen bom_files satırının ID'si
+
+            // Her bir part numarası için bom_parts tablosuna ekleme yap
+            partDetailsFromExcel.forEach(part => {
+                const { partNumber, quantity } = part;
+
+                // Aynı bom_id ve part_number ile eklenmiş mi kontrol et
+                db.query('SELECT * FROM bom_parts WHERE bom_id = ? AND part_number = ?', 
+                [bomId, partNumber], (err, existingPart) => {
+                    if (err) {
+                        console.error(err);
+                        return res.send('Veritabanında bir hata oluştu.');
+                    }
+
+                    // Eğer aynı part eklenmemişse bom_parts'a ekle
+                    if (existingPart.length === 0) {
+                        db.query(`INSERT INTO bom_parts 
+                        (bom_id, part_number, quantity) 
+                        VALUES (?, ?, ?)`, 
+                        [bomId, partNumber, quantity], (err, insertResult) => {
+                            if (err) {
+                                console.error(err);
+                                return res.send('Part numarası eklenirken hata oluştu.');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // İşlem başarıyla tamamlandığında yönlendirme yap
             res.redirect('/dashboard');
-           
         });
     });
 });
+
 
 // Kullanıcı profili sayfası
 router.get('/profile', (req, res) => {
@@ -1481,23 +1710,28 @@ router.post('/update-password', (req, res) => {
 });
 
 // Dosya silme rotası
-router.delete('/delete-file/:id', (req, res) => {
+router.delete('/delete-file/:id', async (req, res) => {
     const fileId = req.params.id;
-    
-    // Dosyayı veritabanından sil
-    db.query('DELETE FROM bom_files WHERE id = ?', [fileId], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).send('Dosya silinirken bir hata oluştu.');
-        }
-        
+
+    try {
+        // Transaction başlatmadan, tek tek query'leri çalıştır
+        await db.promise().query('DELETE FROM bom_parts WHERE bom_id = ?', [fileId]);
+        await db.promise().query('DELETE FROM bom_risk_alerts WHERE bom_id = ?', [fileId]);
+        await db.promise().query('DELETE FROM orders WHERE bom_id = ?', [fileId]);
+
+        // Son olarak bom_files kaydını sil
+        const [result] = await db.promise().query('DELETE FROM bom_files WHERE id = ?', [fileId]);
+
         if (result.affectedRows === 0) {
             return res.status(404).send('Dosya bulunamadı.');
         }
-        
-        // Dosya başarıyla silindi
-        res.status(200).send('Dosya başarıyla silindi.');
-    });
+
+        // İşlem başarılı, silme işlemi tamamlandı
+        res.status(200).send('Dosya ve ilişkili veriler başarıyla silindi.');
+    } catch (error) {
+        console.error('Hata oluştu:', error);
+        res.status(500).send('Dosya silinirken bir hata oluştu.');
+    }
 });
 
 // Favorilere ekleme

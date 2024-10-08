@@ -2,6 +2,7 @@ const axios = require('axios');
 
 // Mouser API çağrısı
 async function callMouserAPI(partNumber) {
+    console.log("mouser api yapacak");
     const apiKey = '00274d62-3a13-4b25-b7a0-383f23a48a08'; // API anahtarınızı buraya girin
     const apiUrl = `https://api.mouser.com/api/v1/search/partnumber?apiKey=${apiKey}`;
     

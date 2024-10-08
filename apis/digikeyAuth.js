@@ -27,7 +27,7 @@ async function regenerateToken() {
        
         return accessToken;
     } catch (error) {
-        console.error('Token yenileme hatası:', error.response ? error.response.data : error.message);
+        // console.error('Token yenileme hatası:', error.response ? error.response.data : error.message);
         throw new Error('Token yenileme başarısız oldu.');
     }
 }
@@ -44,6 +44,7 @@ async function getValidToken() {
 
 // DigiKey API çağrısı
 async function callDigiKeyAPI(partNumber, token) {
+    console.log("callDigiKeyAPI girdi");
     const apiUrl = `https://api.digikey.com/products/v4/search/${partNumber}/productdetails`;
 
     try {
@@ -55,7 +56,8 @@ async function callDigiKeyAPI(partNumber, token) {
         });
         return response.data;
     } catch (error) {
-        console.error('DigiKey API çağrısı başarısız2:', error);
+        // console.error('DigiKey API çağrısı başarısız2:', error);
+        console.log("callDigiKeyAPI hata aldı: "+ error);
         throw error;
     }
 }
