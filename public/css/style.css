@@ -248,9 +248,9 @@ header h1 {
     background-color: #e74c3c;
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 25px;
-    height: 25px;
+    border-radius: 15%;
+   
+    
     font-size: 1rem;
     display: flex;
     justify-content: center;
@@ -262,7 +262,9 @@ header h1 {
 .file-item .delete-btn:hover {
     background-color: #c0392b;
 }
-
+.file-item .delete-btn i{
+    margin-right: 5px;
+}
 .file-item h4 {
     margin: 0;
     font-size: 1.2rem;

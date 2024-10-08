@@ -421,18 +421,25 @@ db.query(
             leadTimeDateSlot = 'bom_lead_time_1_date';
         }
 
-        // Yeni birim fiyat ve lead time bilgilerini ve tarihlerini yaz
-        db.query(
-            `UPDATE bom_files 
-            SET total_price = ?, min_lead_time = ?, ${priceSlot} = ?, ${leadTimeSlot} = ?, ${priceDateSlot} = NOW(), ${leadTimeDateSlot} = NOW() 
-            WHERE id = ?`,
-            [totalPrice.toFixed(2), maxLeadTime, unitPrice.toFixed(2), maxLeadTime, fileId],
-            (updateErr) => {
-                if (updateErr) {
-                    console.error('Veritabanı güncellemesi başarısız:', updateErr.message);
-                }
-            }
-        );
+      // Yeni birim fiyat ve lead time bilgilerini ve tarihlerini yaz
+db.query(
+    `UPDATE bom_files 
+    SET total_price = ?, 
+        min_lead_time = ?, 
+        ${priceSlot} = ?, 
+        ${leadTimeSlot} = ?, 
+        ${priceDateSlot} = NOW(), 
+        ${leadTimeDateSlot} = NOW(), 
+        last_updated = NOW()  -- last_updated alanı da şimdi güncelleniyor
+    WHERE id = ?`,
+    [totalPrice.toFixed(2), maxLeadTime, unitPrice.toFixed(2), maxLeadTime, fileId],
+    (updateErr) => {
+        if (updateErr) {
+            console.error('Veritabanı güncellemesi başarısız:', updateErr.message);
+        }
+    }
+);
+
 
 // Part numaraları için bom_parts tablosunu güncelle
 partDetailsFromExcel.forEach(part => {
@@ -599,48 +606,91 @@ router.post('/bom_tracking/update', (req, res) => {
             bomId: bomId,
             updateInterval: req.body[`updateInterval_${bomId}`],
             partNotification: req.body[`partNotification_${bomId}`] ? 1 : 0,
-            updateDisabled: req.body[`disableUpdate_${bomId}`] ? 1 : 0
+            updateDisabled: req.body[`disableUpdate_${bomId}`] ? 1 : 0,
+            startTime: req.body[`startTime_${bomId}`] ? new Date(req.body[`startTime_${bomId}`]) : null
         };
     });
 
+    let completedQueries = 0;
+
     bomFiles.forEach(bom => {
+        let nextUpdate = null;
+        if (bom.startTime) {
+            const startTimeDate = new Date(bom.startTime);
+            switch (bom.updateInterval) {
+                case 'minute':
+                    nextUpdate = new Date(startTimeDate.getTime() + 1 * 60000); // 1 dakika ekle
+                    break;
+                case 'daily':
+                    nextUpdate = new Date(startTimeDate.getTime() + 24 * 60 * 60000); // 1 gün ekle
+                    break;
+                case 'weekly':
+                    nextUpdate = new Date(startTimeDate.getTime() + 7 * 24 * 60 * 60000); // 1 hafta ekle
+                    break;
+                case 'monthly':
+                    nextUpdate = new Date(startTimeDate.getTime() + 30 * 24 * 60 * 60000); // 1 ay ekle
+                    break;
+                default:
+                    nextUpdate = null;
+            }
+        }
+
+        // Güncelleme sorgusu
         const updateQuery = `
             UPDATE bom_files
-            SET update_interval = ?, part_notification = ?, update_disabled = ?
+            SET update_interval = ?, part_notification = ?, update_disabled = ?, start_time = ?, next_update = ?
             WHERE user_id = ? AND id = ?
         `;
-        db.query(updateQuery, [bom.updateInterval, bom.partNotification, bom.updateDisabled, userId, bom.bomId], (err) => {
+        db.query(updateQuery, [bom.updateInterval, bom.partNotification, bom.updateDisabled, bom.startTime, nextUpdate, userId, bom.bomId], (err) => {
             if (err) {
                 console.error("Ayarlar kaydedilemedi:", err);
                 return res.send('Ayarlar kaydedilemedi.');
             }
-        });
-    });
 
-    res.redirect('/bom_tracking');
+            // // Son güncelleme tarihini güncelle
+            // const lastUpdateQuery = `
+            //     UPDATE bom_files 
+            //     SET last_updated = (
+            //         SELECT GREATEST(
+            //             COALESCE(bom_price_1_date, '1000-01-01'),
+            //             COALESCE(bom_price_2_date, '1000-01-01'),
+            //             COALESCE(bom_price_3_date, '1000-01-01'),
+            //             COALESCE(bom_price_4_date, '1000-01-01'),
+            //             COALESCE(bom_price_5_date, '1000-01-01')
+            //         )
+            //     )
+            //     WHERE user_id = ? AND id = ?
+            // `;
+            // db.query(lastUpdateQuery, [userId, bom.bomId], (err) => {
+            //     if (err) {
+            //         console.error("Son güncelleme zamanı ayarlanamadı:", err);
+            //         return res.send('Son güncelleme zamanı ayarlanamadı.');
+            //     }
+            // });
+        });
+
+        completedQueries++;
+        if (completedQueries === bomFiles.length && !res.headersSent) {
+            res.redirect('/bom_tracking');
+        }
+    });
 });
 
 
 
 
 router.get('/bom_tracking', (req, res) => {
-    const userId = req.session.user.id; // Oturum açmış kullanıcı ID'si
+    const userId = req.session.user.id;
 
-    const query = `
-        SELECT id, file_name, update_interval, part_notification, update_disabled, last_update
-        FROM bom_files
-        WHERE user_id = ?
-    `;
-
-    db.query(query, [userId], (err, bomFiles) => {
+    // Veritabanından BOM dosyalarını çek
+    db.query('SELECT id, file_name, last_updated FROM bom_files WHERE user_id = ?', [userId], (err, bomFiles) => {
         if (err) {
-            console.error("Veriler alınırken bir hata oluştu:", err);
-            return res.send("Veriler alınamadı.");
+            console.error('Veritabanı sorgusu başarısız:', err);
+            return res.send('Veritabanı sorgusu başarısız.');
         }
 
-        res.render('bom_tracking', {
-            bomFiles: bomFiles
-        });
+        // BOM dosyalarını şablona gönder
+        res.render('bom_tracking', { bomFiles });
     });
 });
 

@@ -149,9 +149,18 @@
 
         <form action="/bom_tracking/update" method="POST">
             <ul class="bom-list">
-                <% bomFiles.forEach(function(bom) { %>
+                <% bomFiles.forEach(function(bom) { 
+                    // Mevcut tarih ve saati otomatik olarak almak
+                    const now = new Date().toISOString().slice(0, 16); 
+                %>
                 <li class="bom-item">
                     <span><%= bom.file_name %></span>
+
+                    <!-- Güncelleme Başlangıç Zamanı -->
+                    <label>
+                        Başlangıç Zamanı: 
+                        <input type="datetime-local" id="startTime_<%= bom.id %>" name="startTime_<%= bom.id %>" value="<%= bom.start_time ? new Date(bom.start_time).toISOString().slice(0, 16) : '' %>" >
+                    </label>
 
                     <!-- Güncelleme Sıklığı Seçimi -->
                     <select name="updateInterval_<%= bom.id %>">
@@ -194,7 +203,22 @@
         </form>
     </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bomFiles = <%- JSON.stringify(bomFiles) %>;  // BOM dosyalarını al
+
+            bomFiles.forEach(function(bom) {
+                const startTimeInput = document.getElementById('startTime_' + bom.id);
+                if (!startTimeInput.value) {
+                    const now = new Date();
+                    now.setHours(now.getHours() + 3);  // Mevcut saate 3 saat ekle
+                    startTimeInput.value = now.toISOString().slice(0, 16);  // Format: YYYY-MM-DDTHH:MM
+                }
+            });
+        });
+    </script>
 </body>
+
 
 
 </html>
