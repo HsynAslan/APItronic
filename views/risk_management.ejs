@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Management</title>
+    <link rel="stylesheet" href="/stylesheets/risk_management.css">
+<style>
+    /* Ana stil ayarları */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f6f9;
+    margin: 0;
+    padding: 0;
+}
+
+/* Sağ tarafın genişliği %80 olarak ayarlandı */
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.main-content {
+    width: 80%;
+    padding: 20px;
+    background-color: #fff;
+    margin-left: 20%; /* Sol taraftaki %20'lik menü için boşluk */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* Başlık stili */
+h1 {
+    color: #333;
+    font-size: 28px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Seçim kutusu ve butonlar */
+.select-bom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.select-bom select {
+    width: 70%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.select-bom button {
+    background-color: #007bff;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+.select-bom button:hover {
+    background-color: #0056b3;
+}
+
+/* Tablo stil ayarları */
+.risk-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.risk-table th, .risk-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.risk-table th {
+    background-color: #007bff;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.risk-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.risk-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Risk yönetimi durum göstergesi */
+.status {
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.status.low-risk {
+    background-color: #28a745;
+    color: white;
+}
+
+.status.medium-risk {
+    background-color: #ffc107;
+    color: white;
+}
+
+.status.high-risk {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Tablo altındaki aksiyon butonları */
+.action-buttons {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.action-buttons button {
+    background-color: #28a745;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.action-buttons button:hover {
+    background-color: #218838;
+}
+
+.action-buttons button.danger {
+    background-color: #dc3545;
+}
+
+.action-buttons button.danger:hover {
+    background-color: #c82333;
+}
+</style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sol taraf menü -->
+        <%- include('partials/leftSide') %>
+
+        <!-- Sağ taraf ana içerik -->
+        <div class="main-content">
+            <h1>Risk Management</h1>
+
+            <!-- BOM dosyası seçimi -->
+            <div class="select-bom">
+                <label for="bomSelect">Select BOM File:</label>
+                <select id="bomSelect">
+                    <option disabled selected value="">-- Select BOM File --</option>
+                    <% bomFiles.forEach(bom => { %>
+                        <option value="<%= bom.id %>"><%= bom.file_name %></option>
+                    <% }) %>
+                </select>
+                <button class="btn-check-risk" onclick="fetchRiskData()">Check Risk</button>
+            </div>
+
+            <!-- Risk durumu tablosu -->
+            <div class="table-container">
+                <table class="risk-table">
+                    <thead>
+                        <tr>
+                            <th>Part Number</th>
+                            <th>Current Price</th>
+                            <th>Lead Time</th>
+                            <th>Risk Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="riskTableBody">
+                        <!-- Dinamik olarak tablo doldurulacak -->
+                        <% if (bomParts && bomParts.length > 0) { %>
+                            <% bomParts.forEach(part => { %>
+                                <tr>
+                                    <td><%= part.part_number %></td>
+                                    <td>$<%= part.price_1 %></td>
+                                    <td><%= part.lead_time_1 %> days</td>
+                                    <td>
+                                        <% if (part.lead_time_1 > 100) { %>
+                                            <span class="status high-risk">High Risk</span>
+                                        <% } else if (part.lead_time_1 > 50) { %>
+                                            <span class="status medium-risk">Medium Risk</span>
+                                        <% } else { %>
+                                            <span class="status low-risk">Low Risk</span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="4">No data available. Please select a BOM file.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Aksiyon butonları -->
+            <div class="action-buttons">
+                <button class="btn-danger" onclick="alert('Risk Mitigation Started')">Start Mitigation</button>
+                <button class="btn-download" onclick="alert('Report Downloaded')">Download Report</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AJAX ve JS işlemleri -->
+    <script>
+        function fetchRiskData() {
+            const selectedBomId = document.getElementById("bomSelect").value;
+
+            if (!selectedBomId) {
+                alert("Please select a BOM file.");
+                return;
+            }
+
+            // Sunucudan risk verilerini AJAX ile çek
+            fetch(`/risk-management/${selectedBomId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Gelen verileri tabloya doldur
+                    const riskTableBody = document.getElementById("riskTableBody");
+                    riskTableBody.innerHTML = ""; // Mevcut tabloyu temizle
+
+                    if (data.parts && data.parts.length > 0) {
+                        data.parts.forEach(part => {
+                            const row = `
+                                <tr>
+                                    <td>${part.part_number}</td>
+                                    <td>$${part.price_1}</td>
+                                    <td>${part.lead_time_1} days</td>
+                                    <td>
+                                        ${part.lead_time_1 > 100 ? 
+                                            '<span class="status high-risk">High Risk</span>' : 
+                                            part.lead_time_1 > 50 ? 
+                                            '<span class="status medium-risk">Medium Risk</span>' : 
+                                            '<span class="status low-risk">Low Risk</span>'
+                                        }
+                                    </td>
+                                </tr>
+                            `;
+                            riskTableBody.innerHTML += row;
+                        });
+                    } else {
+                        riskTableBody.innerHTML = `<tr><td colspan="4">No parts data available.</td></tr>`;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching risk data:", error);
+                    alert("Error fetching risk data.");
+                });
+        }
+    </script>
+</body>
+</html>

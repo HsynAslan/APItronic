@@ -7,180 +7,227 @@
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f0f2f5;
+            background-color: #f8f9fa;
             margin: 0;
             padding: 0;
+            color: #333;
         }
-
+    
         .container {
-    margin-top: 4%;
-    margin-left: 22%;
-    max-width: 75%;
-    /* margin-left: auto; */
-    margin-right: auto;
-    padding: 30px;
-    background-color: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
+            margin-top: 4%;
+            margin-left: 22%;
+            max-width: 75%;
+            margin-right: auto;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+    
         h1 {
             text-align: center;
-            color: #333;
+            color: #343a40;
             font-weight: 300;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
         }
-
+    
         .bom-list {
             list-style-type: none;
             padding: 0;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
-
+    
         .bom-item {
-            background-color: #fafafa;
+            background-color: #f9f9f9;
             padding: 20px;
             border: 1px solid #e0e0e0;
-            border-radius: 8px;
+            border-radius: 10px;
             margin-bottom: 15px;
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
+            flex-direction: column;
             justify-content: space-between;
             transition: box-shadow 0.3s ease;
         }
-
+    
         .bom-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
-
-        .bom-item select, .bom-item input[type="checkbox"] {
+    
+        .bom-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+    
+        .bom-header span {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+    
+        .bom-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+    
+        /* Modern Select Box */
+        .bom-item select {
+            background-color: #fff;
             padding: 8px;
-            margin-left: 10px;
-            border: 1px solid #dcdcdc;
-            border-radius: 4px;
+            border-radius: 6px;
+            font-size: 1rem;
+            color: #495057;
+            border: 1px solid #ced4da;
+            appearance: none;
+            cursor: pointer;
             transition: border-color 0.3s ease;
         }
-
-        .bom-item select:focus, .bom-item input[type="checkbox"]:focus {
+    
+        .bom-item select:focus {
             outline: none;
-            border-color: #4caf50;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
-
-        .bom-item label {
-            margin-left: 15px;
-            font-size: 0.9rem;
-            color: #555;
+    
+        /* Modern Checkbox */
+        .bom-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
         }
-
-        .bom-item span {
+    
+        .bom-checkboxes label {
             font-size: 1rem;
-            font-weight: 500;
-            color: #333;
+            color: #495057;
         }
-
+    
+        .bom-item input[type="checkbox"] {
+            transform: scale(1.2);
+            margin-right: 10px;
+            accent-color: #28a745;
+        }
+    
+        /* Date Input */
+        .bom-item input[type="datetime-local"] {
+            padding: 8px;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            background-color: #fff;
+            color: #495057;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+    
+        .bom-item input[type="datetime-local"]:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            outline: none;
+        }
+    
+        /* Last Update */
+        .last-update {
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-align: right;
+            margin-top: 20px;
+            font-style: italic;
+            align-self: flex-end;
+        }
+    
+        /* Save Button */
         .save-button {
-            background-color: #4caf50;
+            background-color: #28a745;
             color: white;
             padding: 12px 25px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: bold;
-            transition: background-color 0.3s ease;
-            margin-top: 20px;
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            margin-top: 30px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
-
+    
         .save-button:hover {
-            background-color: #45a049;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            background-color: #218838;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
         }
-
+    
         .save-button:active {
-            background-color: #39903d;
+            background-color: #1e7e34;
         }
-
-        .bom-item .last-update {
-            color: #888;
-            font-size: 0.85rem;
-            margin-top: 5px;
-        }
-
-        .bom-item select {
-            background-color: #fff;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 1rem;
-            color: #555;
-            border: 1px solid #ccc;
-        }
-
+    
         /* Responsive Design */
         @media (max-width: 768px) {
             .container {
                 max-width: 90%;
                 padding: 20px;
             }
-
+    
             .bom-item {
                 flex-direction: column;
                 align-items: flex-start;
             }
-
-            .bom-item select {
+    
+            .bom-item select, .bom-item input[type="datetime-local"] {
                 width: 100%;
                 margin-top: 10px;
             }
-
-            .bom-item label, .bom-item .last-update {
+    
+            .bom-checkboxes {
+                flex-direction: column;
+            }
+    
+            .last-update {
+                text-align: left;
                 margin-top: 10px;
             }
         }
-
     </style>
+    
+    
 </head>
 <body>
     <%- include('partials/leftSide') %>
     <div class="container">
-        <div class="uContainer">
+        <div class="uContainer" style="width: 100%;">
         <h1>BOM Dosyası Takip Ayarları</h1>
 
         <form action="/bom_tracking/update" method="POST">
             <ul class="bom-list">
-                <% bomFiles.forEach(function(bom) { 
-                    // Mevcut tarih ve saati otomatik olarak almak
-                    const now = new Date().toISOString().slice(0, 16); 
-                %>
+                <% bomFiles.forEach(function(bom) { %>
                 <li class="bom-item">
-                    <span><%= bom.file_name %></span>
+                    
+                    <!-- Header kısmı: BOM ismi ve tarih/periyot seçici -->
+                    <div class="bom-header">
+                        <span><%= bom.file_name %></span>
+                        <div class="bom-controls">
+                            <input type="datetime-local" id="startTime_<%= bom.id %>" name="startTime_<%= bom.id %>" value="<%= bom.start_time ? new Date(bom.start_time).toISOString().slice(0, 16) : '' %>" >
+                            <select name="updateInterval_<%= bom.id %>">
+                                <option value="minute" <%= bom.update_interval === 'minute' ? 'selected' : '' %>>Dakika</option>
+                                <option value="daily" <%= bom.update_interval === 'daily' ? 'selected' : '' %>>Günlük</option>
+                                <option value="weekly" <%= bom.update_interval === 'weekly' ? 'selected' : '' %>>Haftalık</option>
+                                <option value="monthly" <%= bom.update_interval === 'monthly' ? 'selected' : '' %>>Aylık</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <!-- Güncelleme Başlangıç Zamanı -->
-                    <label>
-                        Başlangıç Zamanı: 
-                        <input type="datetime-local" id="startTime_<%= bom.id %>" name="startTime_<%= bom.id %>" value="<%= bom.start_time ? new Date(bom.start_time).toISOString().slice(0, 16) : '' %>" >
-                    </label>
-
-                    <!-- Güncelleme Sıklığı Seçimi -->
-                    <select name="updateInterval_<%= bom.id %>">
-                        <option value="minute" <%= bom.update_interval === 'minute' ? 'selected' : '' %>>Dakika</option>
-                        <option value="daily" <%= bom.update_interval === 'daily' ? 'selected' : '' %>>Günlük</option>
-                        <option value="weekly" <%= bom.update_interval === 'weekly' ? 'selected' : '' %>>Haftalık</option>
-                        <option value="monthly" <%= bom.update_interval === 'monthly' ? 'selected' : '' %>>Aylık</option>
-                    </select>
-
-                    <!-- Part Bazında Bildirim Checkbox'ı -->
-                    <label>
-                        <input type="checkbox" name="partNotification_<%= bom.id %>" <%= bom.part_notification ? 'checked' : '' %> >
-                        Part numarası bazında bildirim al
-                    </label>
-
-                    <!-- Güncelleme Yapılmasın Checkbox'ı -->
-                    <label>
-                        <input type="checkbox" name="disableUpdate_<%= bom.id %>" <%= bom.update_disabled ? 'checked' : '' %> >
-                        Güncellemeyi devre dışı bırak
-                    </label>
+                    <!-- Checkbox'lar -->
+                    <div class="bom-checkboxes">
+                        <label>
+                            <input type="checkbox" name="partNotification_<%= bom.id %>" <%= bom.part_notification ? 'checked' : '' %> >
+                            Part numarası bazında bildirim al
+                        </label>
+                        <label>
+                            <input type="checkbox" name="disableUpdate_<%= bom.id %>" <%= bom.update_disabled ? 'checked' : '' %> >
+                            Güncellemeyi devre dışı bırak
+                        </label>
+                    </div>
 
                     <!-- Son Güncelleme Bilgisi -->
                     <span class="last-update">
@@ -192,7 +239,7 @@
                             Henüz güncellenmedi
                         <% } %>
                     </span>
-                    
+
                 </li>
                 <% }); %>
             </ul>

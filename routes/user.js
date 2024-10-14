@@ -17,7 +17,7 @@ const bodyParser = require('body-parser');
 router.use(bodyParser.json());
 router.use(express.json()); // JSON verileri alabilmek için gerekli middleware
 const { callFarnellAPI } = require('../apis/element14'); // Element14 API'yi içe aktar
-
+const cron = require('node-cron');
 // Yükleme klasörünü kontrol et ve yoksa oluştur
 let accessToken = null; // Token'ı bellekte tutuyoruz
 let tokenExpiry = null; // Token'ın süresini takip ediyoruz
@@ -187,6 +187,465 @@ router.post('/saveBomCount', (req, res) => {
             res.redirect(`/dashboard2/${fileId}`);
         }
     );
+});
+
+// function updateNextUpdateDate(bomFile) {
+//     const fileId = bomFile.id;
+//     const updateInterval = bomFile.update_interval;
+//     let nextUpdate;
+
+//     // last_updated alanını kullan
+//     const lastUpdated = new Date(bomFile.last_updated);
+
+//     switch (updateInterval) {
+//         case 'daily':
+//             nextUpdate = new Date(lastUpdated.setDate(lastUpdated.getDate() + 1)); // Günlük
+//             break;
+//         case 'weekly':
+//             nextUpdate = new Date(lastUpdated.setDate(lastUpdated.getDate() + 7)); // Haftalık
+//             break;
+//         case 'monthly':
+//             nextUpdate = new Date(lastUpdated.setMonth(lastUpdated.getMonth() + 1)); // Aylık
+//             break;
+//         default:
+//             nextUpdate = lastUpdated;
+//     }
+
+//     db.query(`UPDATE bom_files SET next_update = ? WHERE id = ?`, [nextUpdate, fileId], (err) => {
+//         if (err) {
+//             console.error('next_update güncellemesi başarısız:', err);
+//         } else {
+//             console.log(`BOM dosyası ${fileId} için next_update ${nextUpdate} olarak güncellendi.`);
+//         }
+//     });
+// }
+
+function updateBomFileAndParts(bomFile, digikeyResults, mouserResults, parts) {
+    let totalPrice = 0;
+    let maxLeadTime = 0; // En yüksek lead time'ı bulmak için başlangıçta 0
+
+    console.log("BOM Dosyası Bilgisi:", bomFile);
+    console.log("BOM Count:", bomFile.bom_count);
+    console.log("Parçalar:", parts.length, "adet parça var.");
+
+    parts.forEach((part, index) => {
+        const digikey = digikeyResults[index];
+        const mouser = mouserResults[index];
+        const selectedResult = selectBestSupplier(digikey, mouser);
+
+        console.log(`Parça ${index + 1}: ${part.part_number}`);
+        console.log("Seçilen Sonuç:", selectedResult);
+
+        if (selectedResult) {
+            let partPrice = parseFloat(selectedResult.unitPrice);
+            console.log("Unit Price:", selectedResult.unitPrice, "Parsed Unit Price:", partPrice);
+
+            if (isNaN(partPrice)) {
+                partPrice = 0;
+            }
+
+            partPrice *= part.quantity;
+            console.log("Miktar:", part.quantity, "Parça Fiyatı:", partPrice);
+
+            totalPrice += partPrice;
+            console.log("Toplam Fiyat Güncellemesi:", totalPrice);
+
+            let leadTime = parseInt(selectedResult.leadTime);
+            console.log("Lead Time:", selectedResult.leadTime, "Parsed Lead Time:", leadTime);
+
+            if (!isNaN(leadTime) && leadTime > 0) {
+                maxLeadTime = Math.max(maxLeadTime, leadTime); // En yüksek lead time'ı bulmak için max kullanıyoruz
+            }
+
+            console.log("Güncellenen Max Lead Time:", maxLeadTime);
+        }
+
+        updatePartInDatabase(bomFile.id, part.part_number, selectedResult, part.quantity);
+    });
+
+    const finalTotalPrice = (totalPrice * bomFile.bom_count).toFixed(4);
+    console.log("Final Toplam Fiyat (bom_count ile çarpıldı):", finalTotalPrice);
+    console.log("Final Max Lead Time Sonucu:", maxLeadTime);
+    console.log("BOM Count:", bomFile.bom_count);
+
+    updateBomFile(bomFile, parseFloat(finalTotalPrice), maxLeadTime, bomFile.bom_count);
+}
+
+function updateStartTimeIfNeeded(bomFile) {
+    const fileId = bomFile.id;
+    if (!bomFile.start_time) {  // Eğer start_time null ise
+        const currentTime = new Date();
+        db.query(`UPDATE bom_files SET start_time = ? WHERE id = ?`, [currentTime, fileId], (err) => {
+            if (err) {
+                console.error('start_time güncellenirken hata oluştu:', err);
+            } else {
+                console.log(`BOM dosyası ${fileId} için start_time başarıyla güncellendi: ${currentTime}`);
+            }
+        });
+    }
+}
+
+
+// DigiKey API sonuçlarını almak için fonksiyon
+async function getDigiKeyResults(partDetails, token) {
+    console.log('getDigiKeyResults fonksiyonu çalıştırılıyor...');
+    return await Promise.all(partDetails.map(async (partDetail) => {
+        try {
+            console.log(`DigiKey API çağrısı yapılıyor: Part Number: ${partDetail.part_number}`);
+            const result = await callDigiKeyAPI(partDetail.part_number, token);
+            // console.log(`DigiKey API sonucu: ${JSON.stringify(result)}`);
+            const digikeyLeadTimeDays = parseInt(result?.Product?.ManufacturerLeadWeeks || 0) * 7;
+
+            return {
+                partNumber: partDetail.part_number,
+                manufacturer: result?.Product?.Manufacturer?.Name || 'N/A',
+                unitPrice: result?.Product?.UnitPrice || 'N/A',
+                stock: result?.Product?.QuantityAvailable || 'N/A',
+                totalPrice: (result?.Product?.UnitPrice * partDetail.quantity).toFixed(2) || 'N/A',
+                quantity: partDetail.quantity || 'Bilinmiyor',
+                leadTime: digikeyLeadTimeDays,
+                supplier: 'DigiKey'
+            };
+        } catch (error) {
+            console.error(`DigiKey API çağrısı başarısız oldu: ${partDetail.part_number}`, error.message);
+            return {
+                partNumber: partDetail.part_number,
+                manufacturer: 'N/A',
+                unitPrice: 'N/A',
+                stock: 'N/A',
+                totalPrice: 'N/A',
+                quantity: partDetail.quantity || 'Bilinmiyor',
+                leadTime: 'N/A',
+                supplier: 'DigiKey'
+            };
+        }
+    }));
+}
+
+// Mouser API sonuçlarını almak için fonksiyon
+async function getMouserResults(partDetails) {
+    console.log('getMouserResults fonksiyonu çalıştırılıyor...');
+    return await Promise.all(partDetails.map(async (partDetail) => {
+        try {
+            console.log(`Mouser API çağrısı yapılıyor: Part Number: ${partDetail.part_number}`);
+            const result = await callMouserAPI(partDetail.part_number);
+            // console.log(`Mouser API sonucu: ${JSON.stringify(result)}`);
+            const mouserStockRaw = result?.SearchResults?.Parts[0]?.Availability || 'N/A';
+            const mouserStock = parseInt(mouserStockRaw.replace(' In Stock', ''), 10);
+            const priceBreaks = result?.SearchResults?.Parts[0]?.PriceBreaks || [];
+
+            let mouserPrice = 'N/A';
+            const quantity = partDetail.quantity || 1;
+
+            if (priceBreaks.length > 0) {
+                for (let i = 0; i < priceBreaks.length; i++) {
+                    if (quantity >= priceBreaks[i].Quantity) {
+                        mouserPrice = priceBreaks[i].Price.replace('$', '');
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            const mouserLeadTimeDays = parseInt(result?.SearchResults?.Parts[0]?.LeadTime || 0);
+            const totalPrice = (parseFloat(mouserPrice) * quantity).toFixed(2);
+
+            return {
+                partNumber: partDetail.part_number,
+                manufacturer: result?.SearchResults?.Parts[0]?.Manufacturer || 'N/A',
+                unitPrice: mouserPrice,
+                stock: mouserStock,
+                totalPrice: !isNaN(totalPrice) ? totalPrice : 'N/A',
+                quantity: quantity,
+                leadTime: mouserLeadTimeDays,
+                supplier: 'Mouser'
+            };
+        } catch (error) {
+            console.error(`Mouser API çağrısı başarısız oldu: ${partDetail.part_number}`, error.message);
+            return {
+                partNumber: partDetail.part_number,
+                manufacturer: 'N/A',
+                unitPrice: 'N/A',
+                stock: 'N/A',
+                totalPrice: 'N/A',
+                quantity: partDetail.quantity || 'Bilinmiyor',
+                leadTime: 'N/A',
+                supplier: 'Mouser'
+            };
+        }
+    }));
+}
+
+function calculateNextUpdate(lastUpdated, bomFile) {
+    let nextUpdate = new Date(lastUpdated); // last_updated zamanını kullan
+
+    // Güncelleme aralığına göre next_update'i ayarlayalım
+    switch (bomFile.update_interval) {
+        case 'minute':
+            nextUpdate.setMinutes(nextUpdate.getMinutes() + 1); // last_updated zamanına 1 dakika ekle
+            break;
+        case 'hour':
+            nextUpdate.setHours(nextUpdate.getHours() + 1); // last_updated zamanına 1 saat ekle
+            break;
+        case 'day':
+            nextUpdate.setDate(nextUpdate.getDate() + 1); // last_updated zamanına 1 gün ekle
+            break;
+        case 'week':
+            nextUpdate.setDate(nextUpdate.getDate() + 7); // last_updated zamanına 1 hafta ekle
+            break;
+        case 'month':
+            nextUpdate.setMonth(nextUpdate.getMonth() + 1); // last_updated zamanına 1 ay ekle
+            break;
+        default:
+            console.warn(`Bilinmeyen update_interval: ${bomFile.update_interval}. Varsayılan olarak 1 dakika ekleniyor.`);
+            nextUpdate.setMinutes(nextUpdate.getMinutes() + 1); // Varsayılan olarak 1 dakika ekle
+            break;
+    }
+
+    return nextUpdate;
+}
+
+function updateNextUpdateField(bomFile, lastUpdated) {
+    const nextUpdate = calculateNextUpdate(lastUpdated, bomFile);
+    const fileId = bomFile.id;
+
+    db.query(`
+        UPDATE bom_files 
+        SET next_update = ? 
+        WHERE id = ?`,
+        [nextUpdate, fileId],
+        (err) => {
+            if (err) {
+                console.error('next_update alanı güncellenirken hata oluştu:', err);
+            } else {
+                console.log(`BOM dosyası ${fileId} için next_update başarıyla güncellendi: ${nextUpdate}`);
+            }
+        }
+    );
+}
+
+
+
+function selectBestSupplier(digikey, mouser) {
+    console.log('selectBestSupplier fonksiyonu çalıştırılıyor...');
+    let selectedResult = null;
+
+    if (digikey && mouser) {
+        if (digikey.leadTime === mouser.leadTime) {
+            if (parseFloat(mouser.unitPrice) < parseFloat(digikey.unitPrice)) {
+                selectedResult = mouser;
+            } else {
+                selectedResult = digikey;
+            }
+        } else if (mouser.leadTime < digikey.leadTime) {
+            selectedResult = mouser;
+        } else {
+            selectedResult = digikey;
+        }
+    } else if (mouser) {
+        selectedResult = mouser;
+    } else if (digikey) {
+        selectedResult = digikey;
+    }
+
+    console.log(`Seçilen tedarikçi: ${selectedResult ? selectedResult.supplier : 'Hiçbiri'}`);
+    return selectedResult;
+}
+
+function updatePartInDatabase(fileId, partNumber, selectedResult, bomCount) {
+    console.log(`updatePartInDatabase fonksiyonu çalıştırılıyor: Part Number: ${partNumber}`);
+    const { unitPrice, leadTime, supplier } = selectedResult;
+
+    const safeLeadTime = isNaN(leadTime) || leadTime === 'N/A' ? 0 : leadTime;
+    const safeUnitPrice = isNaN(unitPrice) || unitPrice === 'N/A' ? 0 : parseFloat(unitPrice).toFixed(2);
+
+    db.query('SELECT * FROM bom_parts WHERE bom_id = ? AND part_number = ?', [fileId, partNumber], (err, results) => {
+        if (err) {
+            console.error('Veritabanı sorgusu sırasında hata oluştu:', err);
+            return;
+        }
+
+        let query, params;
+
+        if (results.length > 0) {
+            console.log('Parça veritabanında mevcut, güncelleme yapılıyor...');
+
+            const dateFields = [
+                { priceSlot: 'price_1', leadTimeSlot: 'lead_time_1', dateSlot: 'price_1_date', date: results[0].price_1_date },
+                { priceSlot: 'price_2', leadTimeSlot: 'lead_time_2', dateSlot: 'price_2_date', date: results[0].price_2_date },
+                { priceSlot: 'price_3', leadTimeSlot: 'lead_time_3', dateSlot: 'price_3_date', date: results[0].price_3_date },
+                { priceSlot: 'price_4', leadTimeSlot: 'lead_time_4', dateSlot: 'price_4_date', date: results[0].price_4_date },
+                { priceSlot: 'price_5', leadTimeSlot: 'lead_time_5', dateSlot: 'price_5_date', date: results[0].price_5_date }
+            ];
+
+            dateFields.forEach(field => {
+                if (!field.date) {
+                    field.date = new Date(0);  // Eğer tarih null ise, eski bir tarih olarak kabul ediyoruz
+                }
+            });
+
+            dateFields.sort((a, b) => new Date(a.date) - new Date(b.date)); // En eski tarihli olanı bul
+            const oldestField = dateFields[0];  // En eski tarihli olanı seç
+
+            query = `
+                UPDATE bom_parts 
+                SET ${oldestField.priceSlot} = ?, ${oldestField.leadTimeSlot} = ?, supplier = ?, ${oldestField.dateSlot} = NOW()
+                WHERE bom_id = ? AND part_number = ?
+            `;
+            params = [safeUnitPrice, safeLeadTime, supplier, fileId, partNumber];
+
+        } else {
+            console.log('Parça veritabanında mevcut değil, ekleniyor...');
+
+            query = `
+                INSERT INTO bom_parts (bom_id, part_number, price_1, lead_time_1, supplier, price_1_date, lead_time_1_date) 
+                VALUES (?, ?, ?, ?, ?, NOW(), NOW())
+            `;
+            params = [fileId, partNumber, safeUnitPrice, safeLeadTime, supplier];
+        }
+
+        db.query(query, params, (err) => {
+            if (err) {
+                console.error('Parça bilgisi veritabanına kaydedilemedi:', err);
+            } else {
+                console.log(`Parça ${partNumber} başarıyla güncellendi/veritabanına eklendi.`);
+            }
+        });
+    });
+}
+
+
+function updateBomFile(bomFile, totalPrice, maxLeadTime, bomCount) {
+    const fileId = bomFile.id;
+    const safeTotalPrice = isNaN(totalPrice) ? 0 : (totalPrice / bomCount).toFixed(4);
+    const safeMaxLeadTime = isNaN(maxLeadTime) ? 0 : maxLeadTime;
+
+    db.query(`
+        SELECT bom_price_1_date, bom_price_2_date, bom_price_3_date, bom_price_4_date, bom_price_5_date
+        FROM bom_files WHERE id = ?`, [fileId], (err, result) => {
+        if (err) {
+            console.error('Veritabanı sorgusu başarısız:', err);
+            return;
+        }
+
+        const dateFields = [
+            { priceSlot: 'bom_price_1', leadTimeSlot: 'bom_lead_time_1', dateSlot: 'bom_price_1_date', date: result[0].bom_price_1_date },
+            { priceSlot: 'bom_price_2', leadTimeSlot: 'bom_lead_time_2', dateSlot: 'bom_price_2_date', date: result[0].bom_price_2_date },
+            { priceSlot: 'bom_price_3', leadTimeSlot: 'bom_lead_time_3', dateSlot: 'bom_price_3_date', date: result[0].bom_price_3_date },
+            { priceSlot: 'bom_price_4', leadTimeSlot: 'bom_lead_time_4', dateSlot: 'bom_price_4_date', date: result[0].bom_price_4_date },
+            { priceSlot: 'bom_price_5', leadTimeSlot: 'bom_lead_time_5', dateSlot: 'bom_price_5_date', date: result[0].bom_price_5_date }
+        ];
+
+        dateFields.forEach(field => {
+            if (!field.date) {
+                field.date = new Date(0);  // Eğer tarih null ise, eski bir tarih olarak kabul ediyoruz
+            }
+        });
+
+        // Tarihler arasında en eskisini bul ve ona güncelleme yap
+        dateFields.sort((a, b) => new Date(a.date) - new Date(b.date));
+        const oldestField = dateFields[0];
+
+        db.query(`
+            UPDATE bom_files 
+            SET total_price = ?, min_lead_time = ?, ${oldestField.priceSlot} = ?, ${oldestField.leadTimeSlot} = ?, ${oldestField.dateSlot} = NOW(), last_updated = NOW()
+            WHERE id = ?`,
+            [safeTotalPrice, safeMaxLeadTime, safeTotalPrice, safeMaxLeadTime, fileId],
+            (updateErr) => {
+                if (updateErr) {
+                    console.error('Veritabanı güncellemesi başarısız:', updateErr);
+                } else {
+                    console.log(`BOM dosyası ${fileId} başarıyla güncellendi.`);
+                    
+                    // Güncelleme sonrasında next_update'i hesapla
+                    updateNextUpdateField(bomFile, new Date());
+                }
+            }
+        );
+    });
+}
+
+
+function checkForUpdates() {
+    console.log('checkForUpdates fonksiyonu çalıştırılıyor...');
+    const now = new Date();
+    db.query('SELECT * FROM bom_files WHERE next_update <= ?', [now], (err, bomFiles) => {
+        if (err) {
+            console.error('Veritabanı sorgusu başarısız:', err);
+            return;
+        }
+
+        bomFiles.forEach(bomFile => {
+            if (bomFile.update_disabled) {
+                console.log(`BOM dosyası ${bomFile.id} için güncellemeler devre dışı bırakıldı.`);
+                return;  // Güncellemeler devre dışı bırakıldıysa devam etmiyoruz
+            }
+
+            console.log(`Güncellenmesi gereken BOM dosyası: ${bomFile.id}`);
+            updateBom(bomFile);  // BOM dosyasını güncelle
+        });
+    });
+}
+
+async function updateBom(bomFile) {
+    console.log(`updateBom fonksiyonu çalıştırılıyor: BOM ID: ${bomFile.id}`);
+    const fileId = bomFile.id;
+
+    db.query('SELECT * FROM bom_parts WHERE bom_id = ?', [fileId], async (err, parts) => {
+        if (err || parts.length === 0) {
+            console.error('BOM dosyasına ait ürünler bulunamadı.');
+            return;
+        }
+
+        console.log(`BOM dosyasına ait parçalar alındı: ${parts.length} adet parça var.`);
+
+        const token = await getToken();  // Token'i al
+        console.log('Yeni token alındı.');
+
+        const digikeyResults = await getDigiKeyResults(parts, token);
+        console.log('DigiKey sonuçları alındı.');
+
+        const mouserResults = await getMouserResults(parts);
+        console.log('Mouser sonuçları alındı.');
+
+        updateBomFileAndParts(bomFile, digikeyResults, mouserResults, parts);
+    });
+}
+
+
+// Risk management sayfası için method
+router.get('/risk-management', (req, res) => {
+    const userId = req.session.user.id;  // Kullanıcı kimliğini al
+
+    // Kullanıcının yüklediği BOM dosyalarını veritabanından çekiyoruz
+    db.query('SELECT * FROM bom_files WHERE user_id = ?', [userId], (err, bomFiles) => {
+        if (err) {
+            console.error('BOM dosyaları çekilirken hata oluştu:', err);
+            return res.status(500).send('Veritabanı hatası');
+        }
+
+        // EJS sayfasına BOM dosyalarını ve boş bir tablo gönderiyoruz
+        res.render('risk_management', {
+            bomFiles,  // Kullanıcının BOM dosyaları
+            bomParts: []  // Başlangıçta boş olacak
+        });
+    });
+});
+
+// Seçili BOM dosyasına göre risk verilerini getirme
+router.get('/risk-management/:bomId', (req, res) => {
+    const bomId = req.params.bomId;
+
+    // Seçilen BOM dosyasına ait parçaları veritabanından çekiyoruz
+    db.query('SELECT * FROM bom_parts WHERE bom_id = ?', [bomId], (err, bomParts) => {
+        if (err) {
+            console.error('BOM parçaları çekilirken hata oluştu:', err);
+            return res.status(500).send('Veritabanı hatası');
+        }
+
+        // Parça bilgileri JSON formatında frontend'e gönderiliyor
+        res.json({ parts: bomParts });
+    });
 });
 
 
@@ -683,7 +1142,7 @@ router.get('/bom_tracking', (req, res) => {
     const userId = req.session.user.id;
 
     // Veritabanından BOM dosyalarını çek
-    db.query('SELECT id, file_name, last_updated FROM bom_files WHERE user_id = ?', [userId], (err, bomFiles) => {
+    db.query('SELECT id, file_name, last_updated, part_notification, update_disabled, update_interval, start_time FROM bom_files WHERE user_id = ?', [userId], (err, bomFiles) => {
         if (err) {
             console.error('Veritabanı sorgusu başarısız:', err);
             return res.send('Veritabanı sorgusu başarısız.');
@@ -1883,4 +2342,12 @@ router.use((req, res, next) => {
     res.status(404).sendFile(path.join(__dirname, '404.html'));
 });
 
-module.exports = router;
+module.exports = { router,
+    checkForUpdates,
+    updateBom,
+    getDigiKeyResults,
+    getMouserResults,
+    updatePartInDatabase,
+    selectBestSupplier,
+    updateBomFile 
+};  // checkForUpdates cron ile birlikte çalışır
