@@ -4,159 +4,156 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Risk Management</title>
-    <link rel="stylesheet" href="/stylesheets/risk_management.css">
-<style>
-    /* Ana stil ayarları */
-body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f4f6f9;
-    margin: 0;
-    padding: 0;
-}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Genel sayfa stil ayarları */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+        }
 
-/* Sağ tarafın genişliği %80 olarak ayarlandı */
-.container {
-    display: flex;
-    height: 100vh;
-}
+        .container {
+            display: flex;
+            height: 100vh;
+        }
 
-.main-content {
-    width: 80%;
-    padding: 20px;
-    background-color: #fff;
-    margin-left: 20%; /* Sol taraftaki %20'lik menü için boşluk */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-}
+        .main-content {
+            width: 80%;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #fff;
+            margin-left: 20%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
 
-/* Başlık stili */
-h1 {
-    color: #333;
-    font-size: 28px;
-    margin-bottom: 20px;
-    text-align: center;
-}
+        h1, h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
 
-/* Seçim kutusu ve butonlar */
-.select-bom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-}
+        .select-bom {
+            margin-bottom: 20px;
+        }
 
-.select-bom select {
-    width: 70%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
-}
+        .select-bom select {
+            padding: 10px;
+            font-size: 16px;
+            width: 60%;
+        }
 
-.select-bom button {
-    background-color: #007bff;
-    color: #fff;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
-}
+        .btn-check-risk {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
 
-.select-bom button:hover {
-    background-color: #0056b3;
-}
+        /* BOM dosyası seçilmeden önceki mesaj */
+        .bom-message {
+            font-size: 18px;
+            color: #333;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
 
-/* Tablo stil ayarları */
-.risk-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
+        .bom-message a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
 
-.risk-table th, .risk-table td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
+        .bom-message a:hover {
+            text-decoration: underline;
+        }
 
-.risk-table th {
-    background-color: #007bff;
-    color: white;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
+        /* Risk listesi stil ayarları */
+        ul#riskPartsList, ul#noDataPartsList {
+            list-style: none;
+            padding: 0;
+        }
 
-.risk-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
+        ul#riskPartsList li {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            cursor: pointer;
+        }
+        ul#noDataPartsList li {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #ff00005b;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            cursor: pointer;
+        }
+        ul#riskPartsList li:hover, ul#noDataPartsList li:hover {
+            background-color: #e9ecef;
+        }
 
-.risk-table tr:hover {
-    background-color: #f1f1f1;
-}
+        .high-risk {
+            border-left: 6px solid #dc3545;
+        }
 
-/* Risk yönetimi durum göstergesi */
-.status {
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: bold;
-    text-align: center;
-}
+        .medium-risk {
+            border-left: 6px solid #ffc107;
+            background-color: rgba(255, 193, 7, 0.2); /* Dinamik arka plan */
+        }
 
-.status.low-risk {
-    background-color: #28a745;
-    color: white;
-}
+        .low-risk {
+            border-left: 6px solid #28a745;
+        }
 
-.status.medium-risk {
-    background-color: #ffc107;
-    color: white;
-}
+        /* Detaylı bilgi alanları */
+        .details {
+            display: none;
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
 
-.status.high-risk {
-    background-color: #dc3545;
-    color: white;
-}
+        .details p {
+            margin: 5px 0;
+        }
 
-/* Tablo altındaki aksiyon butonları */
-.action-buttons {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-}
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
 
-.action-buttons button {
-    background-color: #28a745;
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 4px;
-    margin-left: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
+        button:hover {
+            background-color: #0056b3;
+        }
 
-.action-buttons button:hover {
-    background-color: #218838;
-}
-
-.action-buttons button.danger {
-    background-color: #dc3545;
-}
-
-.action-buttons button.danger:hover {
-    background-color: #c82333;
-}
-</style>
+        .risk-reason {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <!-- Sol taraf menü -->
+        <!-- Sol menü -->
         <%- include('partials/leftSide') %>
 
-        <!-- Sağ taraf ana içerik -->
+        <!-- Sağ içerik alanı -->
         <div class="main-content">
             <h1>Risk Management</h1>
 
@@ -172,99 +169,325 @@ h1 {
                 <button class="btn-check-risk" onclick="fetchRiskData()">Check Risk</button>
             </div>
 
-            <!-- Risk durumu tablosu -->
-            <div class="table-container">
-                <table class="risk-table">
-                    <thead>
-                        <tr>
-                            <th>Part Number</th>
-                            <th>Current Price</th>
-                            <th>Lead Time</th>
-                            <th>Risk Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="riskTableBody">
-                        <!-- Dinamik olarak tablo doldurulacak -->
-                        <% if (bomParts && bomParts.length > 0) { %>
-                            <% bomParts.forEach(part => { %>
-                                <tr>
-                                    <td><%= part.part_number %></td>
-                                    <td>$<%= part.price_1 %></td>
-                                    <td><%= part.lead_time_1 %> days</td>
-                                    <td>
-                                        <% if (part.lead_time_1 > 100) { %>
-                                            <span class="status high-risk">High Risk</span>
-                                        <% } else if (part.lead_time_1 > 50) { %>
-                                            <span class="status medium-risk">Medium Risk</span>
-                                        <% } else { %>
-                                            <span class="status low-risk">Low Risk</span>
-                                        <% } %>
-                                    </td>
-                                </tr>
-                            <% }) %>
-                        <% } else { %>
-                            <tr>
-                                <td colspan="4">No data available. Please select a BOM file.</td>
-                            </tr>
-                        <% } %>
-                    </tbody>
-                </table>
+            <!-- BOM seçilmediyse gösterilecek mesaj -->
+            <div id="bomMessage" class="bom-message">
+                Lütfen bir Bom Dosyası Seçin - Eğer yoksa lütfen <a href="/dashboard">yükleyin</a>
             </div>
 
-            <!-- Aksiyon butonları -->
-            <div class="action-buttons">
-                <button class="btn-danger" onclick="alert('Risk Mitigation Started')">Start Mitigation</button>
-                <button class="btn-download" onclick="alert('Report Downloaded')">Download Report</button>
+            <!-- Fiyat ve lead time için grafikler -->
+            <div id="chartsContainer" class="charts-container" style="display: none;">
+                <h2>Total Price and Lead Time History</h2>
+                <canvas id="priceLeadTimeChart"></canvas>
             </div>
+
+            <!-- Riskli parçalar listesi -->
+            <h2 id="riskPartsHeader" style="display: none;">Risk Parts</h2>
+            <ul id="riskPartsList" style="display: none;"></ul>
+
+            <!-- Bilgi alınamayan parçalar listesi -->
+            <h2 id="noDataPartsHeader" style="display: none;">Bilgi Alınamayan Parçalar</h2>
+            <ul id="noDataPartsList" style="display: none;"></ul>
         </div>
     </div>
-
-    <!-- AJAX ve JS işlemleri -->
     <script>
+        function renderPartCharts(part) {
+    const ctx = document.getElementById(`priceLeadTimeChart-${part.part_number}`).getContext('2d');
+    const chartData = {
+        labels: [
+            new Date(part.price_5_date).toLocaleDateString(),
+            new Date(part.price_4_date).toLocaleDateString(),
+            new Date(part.price_3_date).toLocaleDateString(),
+            new Date(part.price_2_date).toLocaleDateString(),
+            new Date(part.price_1_date).toLocaleDateString()
+        ],
+        datasets: [
+            {
+                label: 'Price ($)',
+                data: [part.price_5, part.price_4, part.price_3, part.price_2, part.price_1],
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                yAxisID: 'y',
+            },
+            {
+                label: 'Lead Time (days)',
+                data: [part.lead_time_5, part.lead_time_4, part.lead_time_3, part.lead_time_2, part.lead_time_1],
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1,
+                yAxisID: 'y1',
+            }
+        ]
+    };
+
+    new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            scales: {
+                y: {
+                    type: 'linear',
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Price ($)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Lead Time (days)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            }
+        }
+    });
+}
+
         function fetchRiskData() {
             const selectedBomId = document.getElementById("bomSelect").value;
-
+    
             if (!selectedBomId) {
                 alert("Please select a BOM file.");
                 return;
             }
-
-            // Sunucudan risk verilerini AJAX ile çek
+    
             fetch(`/risk-management/${selectedBomId}`)
                 .then(response => response.json())
                 .then(data => {
-                    // Gelen verileri tabloya doldur
-                    const riskTableBody = document.getElementById("riskTableBody");
-                    riskTableBody.innerHTML = ""; // Mevcut tabloyu temizle
+                    // İlk olarak mevcut mesajı gizliyoruz
+                    document.getElementById("bomMessage").style.display = "none";
+                    
+                    // Veriler geldikten sonra gösterilecek olan elementler
+                    document.getElementById("chartsContainer").style.display = "block";
+                    document.getElementById("riskPartsHeader").style.display = "block";
+                    document.getElementById("riskPartsList").style.display = "block";
+                    document.getElementById("noDataPartsHeader").style.display = "block";
+                    document.getElementById("noDataPartsList").style.display = "block";
+    
+                    const bomFileData = data.bomFileData;
+                    const parts = data.parts;
+    
+                    // Grafikleri çiz
+                    renderChart(bomFileData);
+    
+                    // Parça risklerini listele
+                    const riskPartsList = document.getElementById("riskPartsList");
+                    const noDataPartsList = document.getElementById("noDataPartsList");
+                    riskPartsList.innerHTML = "";  // Önceki içerikleri temizle
+                    noDataPartsList.innerHTML = "";
+    
+                    parts.forEach(part => {
+    if (part.price_1 === 0 && part.lead_time_1 === 0) {
+        // Bilgi alınamayan parçalar listesine ekleyelim
+        const noDataItem = document.createElement("li");
+        noDataItem.textContent = `${part.part_number} - No Data Available`;
+        noDataPartsList.appendChild(noDataItem);
+    } else {
+        const listItem = document.createElement("li");
+        listItem.classList.add(getRiskClass(part));
 
-                    if (data.parts && data.parts.length > 0) {
-                        data.parts.forEach(part => {
-                            const row = `
-                                <tr>
-                                    <td>${part.part_number}</td>
-                                    <td>$${part.price_1}</td>
-                                    <td>${part.lead_time_1} days</td>
-                                    <td>
-                                        ${part.lead_time_1 > 100 ? 
-                                            '<span class="status high-risk">High Risk</span>' : 
-                                            part.lead_time_1 > 50 ? 
-                                            '<span class="status medium-risk">Medium Risk</span>' : 
-                                            '<span class="status low-risk">Low Risk</span>'
-                                        }
-                                    </td>
-                                </tr>
-                            `;
-                            riskTableBody.innerHTML += row;
-                        });
-                    } else {
-                        riskTableBody.innerHTML = `<tr><td colspan="4">No parts data available.</td></tr>`;
-                    }
+        // İçeriği oluştur
+        listItem.innerHTML = `
+            <div onclick="toggleDetails(this)">
+                <span>${part.part_number} - Supplier: ${part.supplier}</span>
+            </div>
+            <div class="details" style="display: none; background-color: #f9f9f9; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-top: 10px;">
+                <h4 style="color: #007bff; font-size: 18px; margin-bottom: 10px;">Price and Lead Time Details</h4>
+                
+                // Price History Table (Eskiden yeniye sıralı)
+<div style="margin-bottom: 15px;">
+    <strong style="color: #333;">Price History:</strong>
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #666;">
+        <thead>
+            <tr>
+                <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Price</th>
+                <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding: 5px;">$${part.price_1}</td>
+                <td style="padding: 5px;">${new Date(part.price_1_date).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px;">$${part.price_2}</td>
+                <td style="padding: 5px;">${new Date(part.price_2_date).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px;">$${part.price_3}</td>
+                <td style="padding: 5px;">${new Date(part.price_3_date).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px;">$${part.price_4}</td>
+                <td style="padding: 5px;">${new Date(part.price_4_date).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px;">$${part.price_5}</td>
+                <td style="padding: 5px;">${new Date(part.price_5_date).toLocaleDateString()}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+// Lead Time History Table (Eskiden yeniye sıralı)
+<div style="margin-bottom: 15px;">
+    <strong style="color: #333;">Lead Time History:</strong>
+    <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #666;">
+        <thead>
+            <tr>
+                <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Lead Time (days)</th>
+                <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding: 5px;">${part.lead_time_1} days</td>
+                <td style="padding: 5px;">${new Date(part.lead_time_1_date).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px;">${part.lead_time_2} days</td>
+                <td style="padding: 5px;">${new Date(part.lead_time_2_date).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px;">${part.lead_time_3} days</td>
+                <td style="padding: 5px;">${new Date(part.lead_time_3_date).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px;">${part.lead_time_4} days</td>
+                <td style="padding: 5px;">${new Date(part.lead_time_4_date).toLocaleDateString()}</td>
+            </tr>
+            <tr>
+                <td style="padding: 5px;">${part.lead_time_5} days</td>
+                <td style="padding: 5px;">${new Date(part.lead_time_5_date).toLocaleDateString()}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+
+                <!-- Chart Container -->
+                <div style="margin-top: 20px;">
+                    <h4 style="color: #007bff; font-size: 18px; margin-bottom: 10px;">Price and Lead Time Graph</h4>
+                    <canvas id="priceLeadTimeChart-${part.part_number}" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Risk Reason -->
+                <div style="margin-top: 10px; padding: 10px; background-color: ${getRiskReasonColor(part)}; color: #fff; border-radius: 5px; border-left: 6px solid ${getRiskReasonColor(part)};">
+                    <strong>Risk Status:</strong> ${getRiskReason(part)}
+                </div>
+            </div>
+        `;
+
+        riskPartsList.appendChild(listItem);
+
+        // renderPartCharts fonksiyonunu çağırmak için bir setTimeout ekliyoruz
+        setTimeout(() => {
+            renderPartCharts(part);
+        }, 100);
+    }
+});
+
                 })
                 .catch(error => {
                     console.error("Error fetching risk data:", error);
                     alert("Error fetching risk data.");
                 });
         }
+    
+        function renderChart(bomFileData) {
+            const ctx = document.getElementById('priceLeadTimeChart').getContext('2d');
+            const chartData = {
+                labels: bomFileData.priceDates.map(date => new Date(date).toLocaleDateString()),
+                datasets: [
+                    {
+                        label: 'Total Price',
+                        data: bomFileData.totalPrice,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: 'Lead Time (days)',
+                        data: bomFileData.leadTimes,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'y1',
+                    }
+                ]
+            };
+    
+            new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Total Price'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Lead Time (days)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+        });
+        }
+        function getRiskClass(part) {
+            if (part.lead_time_1 > 100 || part.price_1 > part.price_5) {
+                return 'high-risk';
+            } else if (part.lead_time_1 > 50 || part.price_1 > part.price_2) {
+                return 'medium-risk';
+            } else {
+                return 'low-risk';
+            }
+        }
+    
+        function getRiskReason(part) {
+            if (part.price_1 > part.price_5) {
+                return 'Risk: Price increased compared to historical data.';
+            } else if (part.lead_time_1 > 100) {
+                return 'Risk: High lead time.';
+            } else {
+                return 'Low risk: Stable price and lead time.';
+            }
+        }
+    
+        function getRiskReasonColor(part) {
+            if (part.price_1 > part.price_5 || part.lead_time_1 > 100) {
+                return '#dc3545'; // High risk color (Red)
+            } else if (part.price_1 > part.price_2 || part.lead_time_1 > 50) {
+                return '#ffc107'; // Medium risk color (Yellow)
+            } else {
+                return '#28a745'; // Low risk color (Green)
+            }
+        }
+    
+        function toggleDetails(element) {
+            const details = element.nextElementSibling;
+            details.style.display = details.style.display === 'block' ? 'none' : 'block';
+        }
     </script>
+    
+
 </body>
 </html>

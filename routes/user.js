@@ -388,12 +388,15 @@ function calculateNextUpdate(lastUpdated, bomFile) {
             nextUpdate.setHours(nextUpdate.getHours() + 1); // last_updated zamanına 1 saat ekle
             break;
         case 'day':
+        case 'daily': // 'daily' ve 'day' işleniyor
             nextUpdate.setDate(nextUpdate.getDate() + 1); // last_updated zamanına 1 gün ekle
             break;
         case 'week':
+        case 'weekly': // 'weekly' ve 'week' işleniyor
             nextUpdate.setDate(nextUpdate.getDate() + 7); // last_updated zamanına 1 hafta ekle
             break;
         case 'month':
+        case 'monthly': // 'monthly' ve 'month' işleniyor
             nextUpdate.setMonth(nextUpdate.getMonth() + 1); // last_updated zamanına 1 ay ekle
             break;
         default:
@@ -404,6 +407,7 @@ function calculateNextUpdate(lastUpdated, bomFile) {
 
     return nextUpdate;
 }
+
 
 function updateNextUpdateField(bomFile, lastUpdated) {
     const nextUpdate = calculateNextUpdate(lastUpdated, bomFile);
@@ -613,40 +617,123 @@ async function updateBom(bomFile) {
 }
 
 
-// Risk management sayfası için method
 router.get('/risk-management', (req, res) => {
-    const userId = req.session.user.id;  // Kullanıcı kimliğini al
+    const userId = req.session.user.id;
 
-    // Kullanıcının yüklediği BOM dosyalarını veritabanından çekiyoruz
+    // Kullanıcının yüklediği BOM dosyalarını getiriyoruz
     db.query('SELECT * FROM bom_files WHERE user_id = ?', [userId], (err, bomFiles) => {
         if (err) {
-            console.error('BOM dosyaları çekilirken hata oluştu:', err);
+            console.error('BOM dosyaları alınırken hata:', err);
             return res.status(500).send('Veritabanı hatası');
         }
 
-        // EJS sayfasına BOM dosyalarını ve boş bir tablo gönderiyoruz
         res.render('risk_management', {
-            bomFiles,  // Kullanıcının BOM dosyaları
-            bomParts: []  // Başlangıçta boş olacak
+            bomFiles,
+            bomParts: []  // Başlangıçta boş
         });
     });
 });
 
-// Seçili BOM dosyasına göre risk verilerini getirme
 router.get('/risk-management/:bomId', (req, res) => {
     const bomId = req.params.bomId;
 
-    // Seçilen BOM dosyasına ait parçaları veritabanından çekiyoruz
-    db.query('SELECT * FROM bom_parts WHERE bom_id = ?', [bomId], (err, bomParts) => {
-        if (err) {
-            console.error('BOM parçaları çekilirken hata oluştu:', err);
+    // Öncelikle bom_files tablosundaki bilgileri çekiyoruz
+    db.query('SELECT * FROM bom_files WHERE id = ?', [bomId], (err, bomFile) => {
+        if (err || bomFile.length === 0) {
+            console.error('BOM dosyası çekilirken hata oluştu:', err);
             return res.status(500).send('Veritabanı hatası');
         }
 
-        // Parça bilgileri JSON formatında frontend'e gönderiliyor
-        res.json({ parts: bomParts });
+        // Seçilen BOM dosyasına ait parçaları çekiyoruz
+        db.query('SELECT * FROM bom_parts WHERE bom_id = ?', [bomId], (err, bomParts) => {
+            if (err) {
+                console.error('BOM parçaları çekilirken hata oluştu:', err);
+                return res.status(500).send('Veritabanı hatası');
+            }
+
+            // BOM dosyasına ait fiyat ve lead time bilgilerini frontend'e göndermek üzere hazırlıyoruz
+            const bomFileData = {
+                totalPrice: [
+                    bomFile[0].bom_price_1,
+                    bomFile[0].bom_price_2,
+                    bomFile[0].bom_price_3,
+                    bomFile[0].bom_price_4,
+                    bomFile[0].bom_price_5
+                ],
+                leadTimes: [
+                    bomFile[0].bom_lead_time_1,
+                    bomFile[0].bom_lead_time_2,
+                    bomFile[0].bom_lead_time_3,
+                    bomFile[0].bom_lead_time_4,
+                    bomFile[0].bom_lead_time_5
+                ],
+                priceDates: [
+                    bomFile[0].bom_price_1_date,
+                    bomFile[0].bom_price_2_date,
+                    bomFile[0].bom_price_3_date,
+                    bomFile[0].bom_price_4_date,
+                    bomFile[0].bom_price_5_date
+                ]
+            };
+
+            // Parçalarla ilgili tüm geçmiş fiyat ve lead time bilgileri ile risk hesaplamaları
+            const parts = bomParts.map(part => {
+                const price_1 = parseFloat(part.price_1) || 0;
+                const price_2 = parseFloat(part.price_2) || 0;
+                const price_3 = parseFloat(part.price_3) || 0;
+                const price_4 = parseFloat(part.price_4) || 0;
+                const price_5 = parseFloat(part.price_5) || 0;
+
+                const lead_time_1 = parseInt(part.lead_time_1) || 0;
+                const lead_time_2 = parseInt(part.lead_time_2) || 0;
+                const lead_time_3 = parseInt(part.lead_time_3) || 0;
+                const lead_time_4 = parseInt(part.lead_time_4) || 0;
+                const lead_time_5 = parseInt(part.lead_time_5) || 0;
+
+                // En düşük fiyatı ve tarihini bulma
+                const lowest_price = Math.min(price_1, price_2, price_3, price_4, price_5);
+                const lowest_price_date = part[`price_${[1, 2, 3, 4, 5].find(i => parseFloat(part[`price_${i}`]) === lowest_price)}_date`];
+
+                return {
+                    part_number: part.part_number,
+                    price_1,
+                    price_2,
+                    price_3,
+                    price_4,
+                    price_5,
+                    price_1_date: part.price_1_date,
+                    price_2_date: part.price_2_date,
+                    price_3_date: part.price_3_date,
+                    price_4_date: part.price_4_date,
+                    price_5_date: part.price_5_date,
+                    lead_time_1,
+                    lead_time_2,
+                    lead_time_3,
+                    lead_time_4,
+                    lead_time_5,
+                    lead_time_1_date: part.lead_time_1_date,
+                    lead_time_2_date: part.lead_time_2_date,
+                    lead_time_3_date: part.lead_time_3_date,
+                    lead_time_4_date: part.lead_time_4_date,
+                    lead_time_5_date: part.lead_time_5_date,
+                    lowest_price,
+                    lowest_price_date,
+                    supplier: part.supplier
+                };
+            });
+
+            // Hem bom_files hem de bom_parts bilgilerini frontend'e JSON formatında gönderiyoruz
+            res.json({ bomFileData, parts });
+        });
     });
 });
+
+function formatDate(dateString) {
+    if (!dateString) return 'No Date'; // Eğer tarih bilgisi yoksa
+
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+}
 
 
 // router.get('/dashboard2/:fileId')
