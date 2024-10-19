@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messaging</title>
+    <style>
+        /* Sayfa düzeni ve stil */
+        body {
+            display: flex;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+        }
+
+        .left-side {
+            width: 20%;
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+
+        .main-content {
+            width: 80%;
+            padding: 20px;
+            background-color: #fff;
+            overflow-y: auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .message-list {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .message {
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+        }
+
+        .sender {
+            font-weight: bold;
+        }
+
+        .form-container {
+            margin-top: 20px;
+        }
+
+        .message-form input, .message-form textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .message-form button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .message-form button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sol menü alanı -->
+    <div class="left-side">
+        <%- include('partials/leftSide') %> <!-- Sol tarafı dahil ettik -->
+    </div>
+
+    <!-- Sağ ana içerik alanı -->
+    <div class="main-content">
+        <h1>Messaging System</h1>
+        
+        
+        <form id="recipientForm" action="/messages" method="POST">
+            <label for="recipientSelect">Select Recipient (Email):</label>
+            <select id="recipientSelect" name="recipientEmail">
+                <option disabled selected value="">-- Select an Email --</option>
+                <% users.forEach(user => { %>
+                    <option value="<%= user.email %>"><%= user.email %></option>
+                <% }) %>
+            </select>
+        </form>
+        <a href="/groups/new">Create Group Chat</a>
+        <a href="/groups">Grupları Listele</a>
+        <!-- Mesajların gösterileceği alan -->
+        <div id="messageContainer" class="message-list"></div>
+
+        <!-- Mesaj gönderim formu -->
+        <div class="form-container">
+            <form id="messageForm" class="message-form" action="/messages/send" method="POST">
+                <input type="hidden" id="recipientEmailInput" name="recipientEmail">
+                <input type="hidden" id="senderId" name="senderId" value="<%= user.id %>">
+                <textarea id="messageInput" name="messageText" rows="3" placeholder="Type your message"></textarea>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+
+// Sayfa yüklendiğinde otomatik mesajları yüklemek için
+function loadMessages() {
+        const recipientEmail = document.getElementById('recipientSelect').value;
+        const messageContainer = document.getElementById('messageContainer');
+        
+        if (!recipientEmail) return;
+        
+        document.getElementById('recipientEmailInput').value = recipientEmail;
+
+        // Mesajları çekiyoruz
+        fetch(`/messages/${recipientEmail}`)
+            .then(res => res.json())
+            .then(data => {
+                messageContainer.innerHTML = '';
+                if (data.length > 0) {
+                    data.forEach(message => {
+                        messageContainer.innerHTML += `
+                            <div class="message">
+                                <div class="sender">${message.sender_email}</div>
+                                <div>${message.message_text}</div>
+                                <small>${new Date(message.created_at).toLocaleString()}</small>
+                                
+                                <!-- Düzenle ve Sil Butonları -->
+                                ${message.sender_id === <%= user.id %> ? `
+                                    <button onclick="editMessage('${message.id}', '${message.message_text}')">Düzenle</button>
+                                    <button onclick="deleteMessage('${message.id}')">Sil</button>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                } else {
+                    messageContainer.innerHTML = `<div>Hadi <strong>${recipientEmail}</strong>'ye yeni bir mesaj bırak</div>`;
+                }
+            })
+            .catch(error => console.error('Error loading messages:', error));
+    }
+
+    // Mesaj Düzenleme
+    function editMessage(messageId, oldMessageText) {
+        const newMessage = prompt('Mesajı düzenleyin:', oldMessageText);
+        if (newMessage) {
+            fetch(`/messages/${messageId}/edit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageText: newMessage })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadMessages();  // Mesajları tekrar yükleyelim
+                } else {
+                    alert('Mesaj düzenlenirken hata oluştu.');
+                }
+            })
+            .catch(error => console.error('Error editing message:', error));
+        }
+    }
+
+    // Mesaj Silme
+    function deleteMessage(messageId) {
+        if (confirm('Bu mesajı silmek istediğinizden emin misiniz?')) {
+            fetch(`/messages/${messageId}/delete`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadMessages();  // Mesajları tekrar yükleyelim
+                } else {
+                    alert('Mesaj silinirken hata oluştu.');
+                }
+            })
+            .catch(error => console.error('Error deleting message:', error));
+        }
+    }
+
+
+
+        document.getElementById('recipientSelect').addEventListener('change', function() {
+            loadMessages();
+        });
+
+        // Sayfa yüklendiğinde otomatik mesajları yüklemek için
+        function loadMessages() {
+            const recipientEmail = document.getElementById('recipientSelect').value;
+            const messageContainer = document.getElementById('messageContainer');
+            
+            if (!recipientEmail) return;
+            
+            document.getElementById('recipientEmailInput').value = recipientEmail;
+
+            // Mesajları çekiyoruz
+            fetch(`/messages/${recipientEmail}`)
+                .then(res => res.json())
+                .then(data => {
+                    messageContainer.innerHTML = '';
+                    if (data.length > 0) {
+                        data.forEach(message => {
+                            messageContainer.innerHTML += `
+                                <div class="message">
+                                    <div class="sender">${message.sender_email}</div>
+                                    <div>${message.message_text}</div>
+                                    <small>${new Date(message.created_at).toLocaleString()}</small>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        messageContainer.innerHTML = `<div>Hadi <strong>${recipientEmail}</strong>'ye yeni bir mesaj bırak</div>`;
+                    }
+                })
+                .catch(error => console.error('Error loading messages:', error));
+        }
+
+        // Mesaj gönderim işlevi
+        document.getElementById('messageForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const recipientEmail = document.getElementById('recipientEmailInput').value;
+            const messageText = document.getElementById('messageInput').value;
+            const senderId = document.getElementById('senderId').value;
+
+            if (!recipientEmail || !messageText) {
+                alert('Please select a recipient and type a message.');
+                return;
+            }
+
+            // Mesaj gönderiyoruz
+            fetch('/messages/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    recipientEmail: recipientEmail,
+                    senderId: senderId,
+                    messageText: messageText,
+                    messageType: 'text',
+                    mediaUrl: null
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.message) {
+                    loadMessages();  // Mesajları tekrar yükleyelim
+                    document.getElementById('messageInput').value = '';  // Giriş kutusunu temizle
+                }
+            })
+            .catch(error => console.error('Error sending message:', error));
+        });
+    </script>
+</body>
+</html>

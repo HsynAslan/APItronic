@@ -1,0 +1,53 @@
+<!-- views/groups.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Groups</title>
+    <link rel="stylesheet" href="/stylesheets/group_chat.css">
+    <style>
+        .main-content {
+            width: 75%;
+            padding: 20px;
+            background-color: #fff;
+            margin-left: 23%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow-y: auto;
+            height: 100vh;
+        }
+        .group-list {
+            list-style: none;
+            padding: 0;
+        }
+        .group-list li {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .group-list li:hover {
+            background-color: #e9ecef;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <%- include('partials/leftSide') %>
+
+        <div class="main-content">
+            <h1>My Groups</h1>
+            <ul class="group-list">
+                <% groups.forEach(group => { %>
+                    <li onclick="window.location.href='/groups/<%= group.id %>/messages'">
+                        <strong><%= group.group_name %></strong>
+                    </li>
+                <% }) %>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!-- views/group_messages.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Chat</title>
+    <link rel="stylesheet" href="/stylesheets/group_chat.css">
+    <style>
+        /* Ana gövde ve container ayarları */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f9;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.main-content {
+    width: 75%; /* Sağ tarafta %75 genişlik */
+    padding: 20px;
+    background-color: #fff;
+    margin-left: 23%; /* Sol menü için boşluk */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow-y: auto;
+    height: 100vh; /* Tam yükseklik */
+}
+
+/* Başlık stil ayarları */
+h1 {
+    font-size: 24px;
+    color: #007bff;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Mesajlar listesi */
+#messages {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    max-height: 500px;
+    overflow-y: scroll;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#messages p {
+    padding: 10px;
+    border-radius: 4px;
+    margin: 5px 0;
+    background-color: #f1f1f1;
+    word-wrap: break-word;
+    position: relative;
+}
+
+/* Mesaj gönderenin ismi */
+#messages p strong {
+    color: #007bff;
+    margin-right: 10px;
+}
+
+/* Mesaj baloncukları */
+#messages p:nth-child(even) {
+    background-color: #e9ecef;
+}
+
+/* Mesaj gönderme formu */
+form {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+    background-color: #fff;
+}
+
+input[type="text"] {
+    width: 85%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button[type="submit"] {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+/* Mesaj balonlarına zaman bilgisi ekleme */
+#messages p::after {
+    content: attr(data-time); /* Mesaj zamanını göstermek için */
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    font-size: 12px;
+    color: #888;
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <%- include('partials/leftSide') %>
+
+        <!-- Grup Mesajları Sayfası -->
+        <div class="main-content">
+            <h1>Group Chat</h1>
+            <div id="messages">
+                <% messages.forEach(message => { %>
+                    <div class="message">
+                        <p><strong><%= message.sender_name %>:</strong> <%= message.message_text %>  <%= message.edited ? '(düzenlendi)' : '' %></p>
+                        <small><%= new Date(message.created_at).toLocaleString() %></small>
+                        
+                        <!-- Düzenle ve Sil butonları -->
+                        <% if (message.sender_id === user.id) { %>
+                            <button onclick="editMessage('<%= message.id %>', '<%= message.message_text %>')">Düzenle</button>
+                            <button onclick="deleteMessage('<%= message.id %>')">Sil</button>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+
+            <!-- Mesaj gönderme formu -->
+            <form action="/groups/<%= group.id %>/messages/send" method="POST">
+                <input type="hidden" name="senderId" value="<%= user.id %>">
+                <input type="text" name="messageText" placeholder="Mesajınızı yazın" required>
+                <button type="submit">Gönder</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Mesaj Düzenleme
+        function editMessage(messageId, messageText) {
+            const newMessage = prompt('Yeni mesaj metnini girin:', messageText);
+            if (newMessage) {
+                fetch(`/groups/messages/${messageId}/edit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ newMessage })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload(); // Sayfayı yenileyerek güncellenmiş mesajı göster
+                    } else {
+                        alert('Mesaj düzenlenirken hata oluştu.');
+                    }
+                });
+            }
+        }
+
+        // Mesaj Silme
+        function deleteMessage(messageId) {
+            if (confirm('Bu mesajı silmek istediğinizden emin misiniz?')) {
+                fetch(`/groups/messages/${messageId}/delete`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload(); // Sayfa yenilenerek silinen mesaj gösterilmez
+                    } else {
+                        alert('Mesaj silinirken hata oluştu.');
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

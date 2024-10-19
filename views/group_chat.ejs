@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Chat</title>
+    <link rel="stylesheet" href="/stylesheets/group_chat.css">
+    <style>
+        .main-content {
+    width:75%; /* Sağ tarafta kalan %80'lik genişlik */
+    padding: 20px;
+    background-color: #fff;
+    margin-left: 23%; /* Sol taraftaki %20'lik menü alanına yer bırak */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow-y: auto; /* Yüksekliği aşan içerik için dikey kaydırma */
+    height: 100vh; /* Sayfanın tamamını kapsaması için tam yükseklik */
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <%- include('partials/leftSide') %>
+        
+        <!-- Grup Sohbeti Sayfası -->
+        <div class="main-content">
+            <h1>Create a New Group Chat</h1>
+
+            <form action="/groups/create" method="POST">
+                <label for="groupName">Group Name:</label>
+                <input type="text" name="groupName" required>
+                
+                <label>Select Group Members:</label>
+                <div>
+                    <% users.forEach(user => { %>
+                        <div>
+                            <input type="checkbox" name="groupMembers[]" value="<%= user.id %>" id="user_<%= user.id %>">
+                            <label for="user_<%= user.id %>"><%= user.email %></label>
+                        </div>
+                    <% }) %>
+                </div>
+            
+                <button type="submit">Create Group</button>
+            </form>
+            
+            
+        </div>
+    </div>
+</body>
+</html>
