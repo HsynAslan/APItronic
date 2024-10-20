@@ -37,6 +37,41 @@ async function getToken() {
         return accessToken;
     }
 }
+// Bellekte geçici olarak dosya tutmak için kullanılır
+const storage2 = multer.memoryStorage(); 
+const upload2 = multer({ storage: storage2 });
+
+// Bireysel mesaj gönderme (medya dosyası dahil)
+router.post('/messages/send', upload2.single('media'), (req, res) => {
+    const { senderId, recipientEmail, messageText, messageType } = req.body;
+    const media = req.file;
+
+    let mediaData = null;
+    if (media) {
+        mediaData = media.buffer.toString('base64');  // Medya dosyasını Base64 formatına dönüştürme
+    }
+
+    // Alıcı ID'sini bul
+    db.query('SELECT id FROM users WHERE email = ?', [recipientEmail], (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(500).json({ error: 'Recipient not found' });
+        }
+
+        const recipientId = results[0].id;
+
+        // Mesajı veritabanına ekle
+        db.query(`
+            INSERT INTO messages (sender_id, recipient_id, message_text, message_type, media_url)
+            VALUES (?, ?, ?, ?, ?)`, 
+            [senderId, recipientId, messageText, media ? 'media' : 'text', mediaData], (err, result) => {
+                if (err) {
+                    console.error('Mesaj gönderilirken hata oluştu:', err);
+                    return res.status(500).json({ error: 'Mesaj gönderilemedi' });
+                }
+                res.json({ message: 'Mesaj başarıyla gönderildi' });
+            });
+    });
+});
 
 // Token yenileme endpoint'i
 router.get('/generate-token', async (req, res) => {
@@ -2139,7 +2174,7 @@ router.post('/groups/create', (req, res) => {
                 return res.status(500).json({ error: 'Grup üyeleri eklenemedi' });
             }
 
-            res.redirect('/group_chat'); // Grup oluşturulduktan sonra yönlendirme yapılır
+            res.redirect('/groups'); // Grup oluşturulduktan sonra yönlendirme yapılır
         });
     });
 });
@@ -2156,30 +2191,39 @@ router.get('/groups/new', (req, res) => {
         res.render('group_chat', { users });
     });
 });
-router.delete('/messages/:messageId/delete', (req, res) => {
+// Mesaj silme
+router.post('/messages/:messageId/delete', (req, res) => {
     const { messageId } = req.params;
 
     db.query('DELETE FROM messages WHERE id = ?', [messageId], (err, result) => {
         if (err) {
             console.error('Mesaj silinirken hata oluştu:', err);
-            return res.status(500).json({ success: false });
+            return res.status(500).json({ error: 'Mesaj silinemedi' });
         }
-        res.json({ success: true });
+
+        res.json({ message: 'Mesaj başarıyla silindi' });
     });
 });
 
+// Mesaj düzenleme
 router.post('/messages/:messageId/edit', (req, res) => {
     const { messageId } = req.params;
     const { messageText } = req.body;
 
-    db.query('UPDATE messages SET message_text = ?, edited = 1 WHERE id = ?', [messageText, messageId], (err, result) => {
-        if (err) {
-            console.error('Mesaj düzenlenirken hata oluştu:', err);
-            return res.status(500).json({ success: false });
-        }
-        res.json({ success: true });
-    });
+    db.query(`
+        UPDATE messages 
+        SET message_text = ?, edited = 1
+        WHERE id = ?`, 
+        [messageText, messageId], (err, result) => {
+            if (err) {
+                console.error('Mesaj düzenlenirken hata oluştu:', err);
+                return res.status(500).json({ error: 'Mesaj düzenlenemedi' });
+            }
+
+            res.json({ message: 'Mesaj başarıyla düzenlendi' });
+        });
 });
+
 
 // Mesaj düzenleme
 router.post('/groups/messages/:messageId/edit', (req, res) => {
@@ -2195,7 +2239,103 @@ router.post('/groups/messages/:messageId/edit', (req, res) => {
     });
 });
 
-// Mesaj silme
+// Grup bilgilerini ve üyelerini getirme
+router.get('/groups/:groupId/info', (req, res) => {
+    const { groupId } = req.params;
+    const user = req.session.user; // Oturumdan kullanıcı bilgisini alıyoruz
+
+    // Grup bilgilerini ve üyeleri al
+    db.query('SELECT * FROM chat_groups WHERE id = ?', [groupId], (err, groupResults) => {
+        if (err || groupResults.length === 0) {
+            console.error('Grup bilgileri alınırken hata oluştu:', err);
+            return res.status(500).json({ error: 'Grup bilgileri alınamadı' });
+        }
+
+        const group = groupResults[0];
+
+        // Grup üyelerini al
+        db.query('SELECT users.id, users.email FROM group_members JOIN users ON group_members.user_id = users.id WHERE group_members.group_id = ?', [groupId], (err, memberResults) => {
+            if (err) {
+                console.error('Grup üyeleri alınırken hata oluştu:', err);
+                return res.status(500).json({ error: 'Grup üyeleri alınamadı' });
+            }
+
+            const members = memberResults;
+
+            // Kurucuyu al
+            db.query('SELECT users.id, users.email FROM users WHERE users.id = ?', [group.creator_id], (err, creatorResults) => {
+                if (err || creatorResults.length === 0) {
+                    console.error('Grup kurucusu alınırken hata oluştu:', err);
+                    return res.status(500).json({ error: 'Grup kurucusu alınamadı' });
+                }
+
+                const creator = creatorResults[0];
+
+                // Yönlendirmeden sonra sayfayı render ediyoruz, `user` oturum bilgisiyle birlikte
+                res.render('group_info', { group, members, creator, user });
+            });
+        });
+    });
+});
+
+// Grup silme işlemi (sadece kurucuya izin veriyoruz)
+router.post('/groups/:groupId/delete', (req, res) => {
+    const { groupId } = req.params;
+    const userId = req.session.user.id;
+
+    // Kullanıcının grup kurucusu olup olmadığını kontrol ediyoruz
+    db.query('SELECT creator_id FROM chat_groups WHERE id = ?', [groupId], (err, results) => {
+        if (err || results.length === 0 || results[0].creator_id !== userId) {
+            return res.status(403).json({ error: 'Bu işlemi yapmaya yetkiniz yok.' });
+        }
+
+        // Gruba ait tüm üyeleri sil
+        db.query('DELETE FROM group_members WHERE group_id = ?', [groupId], (err, result) => {
+            if (err) {
+                console.error('Grup üyeleri silinirken hata oluştu:', err);
+                return res.status(500).json({ error: 'Grup üyeleri silinemedi.' });
+            }
+
+            // Grup silme işlemi (üye silindikten sonra grubu siler)
+            db.query('DELETE FROM chat_groups WHERE id = ?', [groupId], (err, result) => {
+                if (err) {
+                    console.error('Grup silinirken hata oluştu:', err);
+                    return res.status(500).json({ error: 'Grup silinemedi.' });
+                }
+
+                res.redirect('/groups'); // Grup silindikten sonra grup listesine yönlendir
+            });
+        });
+    });
+});
+
+
+// Grup üyesini çıkarma işlemi (sadece kurucuya izin veriyoruz)
+router.post('/groups/:groupId/members/:memberId/remove', (req, res) => {
+    const { groupId, memberId } = req.params;
+    const userId = req.session.user.id; // Kullanıcıyı oturumdan alıyoruz
+
+    // Kullanıcının grup kurucusu olup olmadığını kontrol et
+    db.query('SELECT creator_id FROM chat_groups WHERE id = ?', [groupId], (err, results) => {
+        if (err || results.length === 0 || results[0].creator_id !== userId) {
+            return res.status(403).json({ error: 'Bu işlemi yapmaya yetkiniz yok.' });
+        }
+
+        // Üyeyi gruptan çıkar
+        db.query('DELETE FROM group_members WHERE group_id = ? AND user_id = ?', [groupId, memberId], (err, result) => {
+            if (err) {
+                console.error('Üye çıkarılırken hata oluştu:', err);
+                return res.status(500).json({ error: 'Üye çıkarılamadı.' });
+            }
+
+            // Kullanıcı bilgisi oturumda taşınacağından, yeniden yönlendirirken kullanıcı bilgisine ihtiyacımız yok
+            res.redirect(`/groups/${groupId}/messages`); // Grup bilgisi sayfasına yönlendir
+        });
+    });
+});
+
+
+
 router.delete('/groups/messages/:messageId/delete', (req, res) => {
     const { messageId } = req.params;
 
@@ -2208,15 +2348,98 @@ router.delete('/groups/messages/:messageId/delete', (req, res) => {
     });
 });
 
-//grup mesaj 
-router.post('/groups/:groupId/messages/send', (req, res) => {
+// //grup mesaj 
+// router.post('/groups/:groupId/messages/send', (req, res) => {
+//     const { groupId } = req.params;
+//     const { senderId, messageText, messageType, mediaUrl } = req.body;
+
+//     db.query(`
+//         INSERT INTO group_messages (group_id, sender_id, message_text, message_type, media_url)
+//         VALUES (?, ?, ?, ?, ?)`, 
+//         [groupId, senderId, messageText, messageType, mediaUrl], (err, result) => {
+//             if (err) {
+//                 console.error('Mesaj gönderilirken hata oluştu:', err);
+//                 return res.status(500).json({ error: 'Mesaj gönderilemedi' });
+//             }
+            
+//             res.redirect(`/groups/${groupId}/messages`);
+//         });
+// });
+// Kullanıcıya yeni mesaj bildirimini gösterme
+
+// Mesajları okundu olarak işaretleme (bireysel sohbet)
+router.post('/messages/:recipientId/mark-as-read', (req, res) => {
+    const { recipientId } = req.params;
+    const senderId = req.session.user.id;
+
+    db.query(`
+        UPDATE messages 
+        SET is_read = 1 
+        WHERE sender_id = ? AND recipient_id = ? AND is_read = 0`,
+        [recipientId, senderId], 
+        (err, result) => {
+            if (err) {
+                console.error('Mesajlar okunurken hata oluştu:', err);
+                return res.status(500).json({ error: 'Mesajlar okunamadı.' });
+            }
+            res.json({ message: 'Mesajlar başarıyla okundu olarak işaretlendi.' });
+        }
+    );
+});
+// Grup mesajlarını okundu olarak işaretleme
+router.post('/groups/:groupId/messages/mark-as-read', (req, res) => {
     const { groupId } = req.params;
-    const { senderId, messageText, messageType, mediaUrl } = req.body;
+    const userId = req.session.user.id;
+
+    db.query(`
+        UPDATE group_messages 
+        SET is_read = 1 
+        WHERE group_id = ? AND sender_id != ? AND is_read = 0`,
+        [groupId, userId], 
+        (err, result) => {
+            if (err) {
+                console.error('Grup mesajları okunurken hata oluştu:', err);
+                return res.status(500).json({ error: 'Grup mesajları okunamadı.' });
+            }
+            res.json({ message: 'Grup mesajları başarıyla okundu olarak işaretlendi.' });
+        }
+    );
+});
+
+// Okunmamış mesaj sayısını alma
+router.get('/notifications/unread-messages', (req, res) => {
+    const userId = req.session.user.id;
+
+    db.query(`
+        SELECT COUNT(*) AS unreadCount 
+        FROM messages 
+        WHERE recipient_id = ? AND is_read = 0`, 
+        [userId], 
+        (err, results) => {
+            if (err) {
+                console.error('Okunmamış mesajlar alınırken hata oluştu:', err);
+                return res.status(500).json({ error: 'Okunmamış mesajlar alınamadı.' });
+            }
+            res.json({ unreadCount: results[0].unreadCount });
+        }
+    );
+});
+
+// Grup sohbeti için mesaj gönderme (medya dosyası dahil)
+router.post('/groups/:groupId/messages/send', upload2.single('media'), (req, res) => {
+    const { groupId } = req.params;
+    const { senderId, messageText, messageType } = req.body;
+    const media = req.file;
+
+    let mediaData = null;
+    if (media) {
+        mediaData = media.buffer.toString('base64');  // Medya dosyasını Base64 formatına dönüştürme
+    }
 
     db.query(`
         INSERT INTO group_messages (group_id, sender_id, message_text, message_type, media_url)
         VALUES (?, ?, ?, ?, ?)`, 
-        [groupId, senderId, messageText, messageType, mediaUrl], (err, result) => {
+        [groupId, senderId, messageText, media ? 'media' : 'text', mediaData], (err, result) => {
             if (err) {
                 console.error('Mesaj gönderilirken hata oluştu:', err);
                 return res.status(500).json({ error: 'Mesaj gönderilemedi' });
@@ -2225,6 +2448,7 @@ router.post('/groups/:groupId/messages/send', (req, res) => {
             res.redirect(`/groups/${groupId}/messages`);
         });
 });
+
 
 
 // Belirli bir grup için mesajları listeleme
@@ -2247,38 +2471,71 @@ router.get('/groups/:groupId/messages', (req, res) => {
         res.render('group_messages', { group: { id: groupId }, messages, user });
     });
 });
+// Grup üyesini çıkarma
+router.post('/groups/:groupId/remove-member', (req, res) => {
+    const { groupId } = req.params;
+    const { memberId } = req.body;
+
+    // Üyeyi gruptan çıkarma
+    db.query('DELETE FROM group_members WHERE group_id = ? AND user_id = ?', [groupId, memberId], (err, result) => {
+        if (err) {
+            console.error('Üye çıkarılırken hata oluştu:', err);
+            return res.status(500).json({ error: 'Üye çıkarılamadı' });
+        }
+
+        res.redirect(`/groups/${groupId}/info`);
+    });
+});
 
 // Grup bilgilerini ve üyelerini listeleme
 router.get('/groups/:groupId', (req, res) => {
     const { groupId } = req.params;
 
     // Grup bilgilerini alma
-    db.query('SELECT * FROM chat_groups WHERE id = ?', [groupId], (err, group) => {
-        if (err || group.length === 0) {
-            console.error('Grup bilgileri alınırken hata oluştu:', err);
+    db.query('SELECT * FROM chat_groups WHERE id = ?', [groupId], (err, groupResult) => {
+        if (err || groupResult.length === 0) {
+            console.error('Grup bilgileri alınırken hata oluştu:2449', err);
             return res.status(500).json({ error: 'Grup bilgileri alınamadı' });
         }
 
+        const group = groupResult[0];
+
         // Grup üyelerini alma
-        db.query('SELECT users.id, users.email FROM group_members JOIN users ON group_members.user_id = users.id WHERE group_members.group_id = ?', [groupId], (err, members) => {
+        db.query('SELECT users.id, users.email FROM group_members JOIN users ON group_members.user_id = users.id WHERE group_members.group_id = ?', [groupId], (err, membersResult) => {
             if (err) {
                 console.error('Grup üyeleri alınırken hata oluştu:', err);
                 return res.status(500).json({ error: 'Grup üyeleri alınamadı' });
             }
 
-            res.json({ group: group[0], members });
+            const members = membersResult;
+
+            // Grup kurucusunu alma
+            db.query('SELECT id, email FROM users WHERE id = ?', [group.creator_id], (err, creatorResult) => {
+                if (err || creatorResult.length === 0) {
+                    console.error('Kurucu bilgisi alınırken hata oluştu:', err);
+                    return res.status(500).json({ error: 'Kurucu bilgisi alınamadı' });
+                }
+
+                const creator = creatorResult[0];
+
+                // Tüm bilgileri frontend'e gönderiyoruz
+                res.render('group_info', { group, members, creator });
+            });
         });
     });
 });
-// Tüm grupları listeleme
+
+
+// Tüm grupları listeleme (kurucu ve üye olunan gruplar dahil)
 router.get('/groups', (req, res) => {
     const userId = req.session.user.id;
 
     db.query(`
-        SELECT chat_groups.* 
+        SELECT DISTINCT chat_groups.* 
         FROM chat_groups 
-        JOIN group_members ON chat_groups.id = group_members.group_id 
-        WHERE group_members.user_id = ?`, [userId], (err, groups) => {
+        LEFT JOIN group_members ON chat_groups.id = group_members.group_id
+        WHERE chat_groups.creator_id = ? OR group_members.user_id = ?`, 
+        [userId, userId], (err, groups) => {
         if (err) {
             console.error('Gruplar alınırken hata oluştu:', err);
             return res.status(500).json({ error: 'Gruplar alınamadı' });

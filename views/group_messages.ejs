@@ -1,153 +1,193 @@
-<!-- views/group_messages.ejs -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Group Chat</title>
-    <link rel="stylesheet" href="/stylesheets/group_chat.css">
     <style>
-        /* Ana gövde ve container ayarları */
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f6f9;
-    margin: 0;
-    padding: 0;
-}
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #e5ddd5;
+            margin: 0;
+            padding: 0;
+        }
 
-.container {
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .left-side {
+            width: 25%;
+            background-color: #f0f0f0;
+            padding: 20px;
+            border-right: 1px solid #ddd;
+        }
+
+        .main-content {
+    width: 75%;
+    margin-top: 5%;
+    margin-left: 22%;
+    padding: 20px;
+    background-color: #fff;
     display: flex;
+    flex-direction: column;
     height: 100vh;
+    overflow: hidden;
 }
 
-.main-content {
-    width: 75%; /* Sağ tarafta %75 genişlik */
-    padding: 20px;
-    background-color: #fff;
-    margin-left: 23%; /* Sol menü için boşluk */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    overflow-y: auto;
-    height: 100vh; /* Tam yükseklik */
-}
+        h1 {
+            font-size: 22px;
+            color: #075e54;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
 
-/* Başlık stil ayarları */
-h1 {
-    font-size: 24px;
-    color: #007bff;
-    text-align: center;
-    margin-bottom: 20px;
-}
+        #messages {
+            flex-grow: 1;
+            padding: 20px;
+            background-color: #e5ddd5;
+            border-radius: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
 
-/* Mesajlar listesi */
-#messages {
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    max-height: 500px;
-    overflow-y: scroll;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
+        .message {
+            min-width: 17%;
+            max-width: 60%;
+            padding: 12px;
+            border-radius: 10px;
+            background-color: #fff;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
 
-#messages p {
-    padding: 10px;
-    border-radius: 4px;
-    margin: 5px 0;
-    background-color: #f1f1f1;
-    word-wrap: break-word;
-    position: relative;
-}
+        .message.own {
+            background-color: #dcf8c6;
+            align-self: flex-end;
+        }
 
-/* Mesaj gönderenin ismi */
-#messages p strong {
-    color: #007bff;
-    margin-right: 10px;
-}
+        .message .name {
+            font-weight: bold;
+            color: #075e54;
+            font-size: 14px;
+        }
 
-/* Mesaj baloncukları */
-#messages p:nth-child(even) {
-    background-color: #e9ecef;
-}
-
-/* Mesaj gönderme formu */
-form {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px;
-    border-top: 1px solid #ddd;
-    background-color: #fff;
-}
-
-input[type="text"] {
-    width: 85%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+        .message .text {
+    margin-bottom: 10px;
+    margin-top: 5px;
     font-size: 16px;
 }
 
-button[type="submit"] {
-    padding: 10px 20px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
-}
+        .message .time {
+            font-size: 12px;
+            color: #888;
+            position: absolute;
+            bottom: 8px;
+            left: 10px;
+        }
 
-button[type="submit"]:hover {
-    background-color: #0056b3;
-}
+        .message .icons {
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+        }
 
-/* Mesaj balonlarına zaman bilgisi ekleme */
-#messages p::after {
-    content: attr(data-time); /* Mesaj zamanını göstermek için */
-    position: absolute;
-    right: 10px;
-    bottom: 10px;
-    font-size: 12px;
-    color: #888;
-}
+        .message .icons .edit,
+        .message .icons .delete {
+            color: #075e54;
+            cursor: pointer;
+            margin-left: 8px;
+        }
 
+        form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background-color: #fff;
+        }
+
+        input[type="text"] {
+            width: 85%;
+            padding: 12px;
+            border-radius: 20px;
+            border: none;
+            background-color: #f0f0f0;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 12px 20px;
+            background-color: #25d366;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button i {
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #128c7e;
+        }
+
+        /* Grup bilgisi için link */
+        .info-button {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #075e54;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .info-button:hover {
+            background-color: #128c7e;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <%- include('partials/leftSide') %>
 
-        <!-- Grup Mesajları Sayfası -->
         <div class="main-content">
             <h1>Group Chat</h1>
+            <a href="/groups/<%= group.id %>/info" class="info-button">Grup Bilgisi</a>
             <div id="messages">
                 <% messages.forEach(message => { %>
-                    <div class="message">
-                        <p><strong><%= message.sender_name %>:</strong> <%= message.message_text %>  <%= message.edited ? '(düzenlendi)' : '' %></p>
-                        <small><%= new Date(message.created_at).toLocaleString() %></small>
-                        
-                        <!-- Düzenle ve Sil butonları -->
-                        <% if (message.sender_id === user.id) { %>
-                            <button onclick="editMessage('<%= message.id %>', '<%= message.message_text %>')">Düzenle</button>
-                            <button onclick="deleteMessage('<%= message.id %>')">Sil</button>
-                        <% } %>
+                    <div class="message <%= message.sender_id === user.id ? 'own' : '' %>">
+                        <div class="name"><%= message.sender_name %></div> <!-- Gönderenin e-posta adresi burada gösteriliyor -->
+                        <div class="text"><%= message.message_text %> <%= message.edited ? '(düzenlendi)' : '' %></div>
+                        <div class="time"><%= new Date(message.created_at).toLocaleString() %></div>
+                        <div class="icons">
+                            <i class="fa-regular fa-pen-to-square edit" onclick="editMessage('<%= message.id %>', '<%= message.message_text %>')"></i>
+                            <i class="fa-solid fa-delete-left delete" onclick="deleteMessage('<%= message.id %>')"></i>
+                        </div>
                     </div>
                 <% }) %>
             </div>
 
-            <!-- Mesaj gönderme formu -->
             <form action="/groups/<%= group.id %>/messages/send" method="POST">
                 <input type="hidden" name="senderId" value="<%= user.id %>">
                 <input type="text" name="messageText" placeholder="Mesajınızı yazın" required>
-                <button type="submit">Gönder</button>
+                <button type="submit">
+                    <i class="fa-regular fa-paper-plane" style="color: #04ff00;"></i>
+                </button>
             </form>
         </div>
     </div>
 
     <script>
-        // Mesaj Düzenleme
         function editMessage(messageId, messageText) {
             const newMessage = prompt('Yeni mesaj metnini girin:', messageText);
             if (newMessage) {
@@ -161,7 +201,7 @@ button[type="submit"]:hover {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        location.reload(); // Sayfayı yenileyerek güncellenmiş mesajı göster
+                        location.reload();
                     } else {
                         alert('Mesaj düzenlenirken hata oluştu.');
                     }
@@ -169,7 +209,6 @@ button[type="submit"]:hover {
             }
         }
 
-        // Mesaj Silme
         function deleteMessage(messageId) {
             if (confirm('Bu mesajı silmek istediğinizden emin misiniz?')) {
                 fetch(`/groups/messages/${messageId}/delete`, {
@@ -178,7 +217,7 @@ button[type="submit"]:hover {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        location.reload(); // Sayfa yenilenerek silinen mesaj gösterilmez
+                        location.reload();
                     } else {
                         alert('Mesaj silinirken hata oluştu.');
                     }
@@ -186,5 +225,6 @@ button[type="submit"]:hover {
             }
         }
     </script>
+    <script src="https://kit.fontawesome.com/d497048b92.js" crossorigin="anonymous"></script>
 </body>
 </html>
