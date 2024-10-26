@@ -55,3 +55,5 @@ Katkı sağlamak için bir pull request açın veya projeye eklemek istediğiniz
 ## 📝 Lisans
 
 Bu proje MIT Lisansı ile lisanslanmıştır.
+
+**Not**: APItronic projesinin tam sürümü ve arayüz için [APItronic-Prototype](https://github.com/HsynAslan/APItronic-Prototype) deposuna göz atabilirsiniz.
